@@ -1,0 +1,56 @@
+openapi: "3.0.0"
+info:
+  title: "Chat API"
+  version: 1.0.0
+  description: "HTTP API of the backend part of [personal pet project](github.com/themirrortruth/chat-akka)"
+components:
+  requestBodies:
+    User:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              password:
+                type: string
+                format: password
+            required:
+            - id
+            - password
+paths:
+  /signin:
+    post:
+      summary: Sign in as some user, on success upgraded to WebSocket protocol for realtime interaction
+      parameters: 
+      - in: header
+        name: Connection
+        required: true
+        schema:
+          type: string
+          enum: [Upgrade]
+      - in: header
+        name: Upgrade
+        required: true
+        schema:
+          type: string
+          enum: [websocket]
+      requestBody:
+        $ref: "#/components/requestBodies/User"
+      responses:
+        '200':
+          description: Ok
+        '403':
+          description: Invalid credentials
+  /signup:
+    post:
+      summary: Sign up as a new user
+      requestBody:
+        $ref: "#/components/requestBodies/User"
+      responses:
+        '200':
+          description: Ok
+        '409':
+          description: User with such id already exists
