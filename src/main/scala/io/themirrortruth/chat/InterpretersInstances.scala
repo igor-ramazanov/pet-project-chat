@@ -8,8 +8,8 @@ import io.themirrortruth.chat.api.{
 import simulacrum.typeclass
 
 @typeclass trait InterpretersInstances[F[_]] {
-  implicit val kvStoreApi: KvStoreApi[String, String, F]
-  implicit val outgoingApi: OutgoingMesssagesApi[F]
-  implicit val incomingApi: IncomingMessagesApi
-  implicit val persistenceApi: PersistenceMessagesApi[F]
+  implicit def kvStoreApi: KvStoreApi[String, String, F]
+  implicit def outgoingApi: OutgoingMesssagesApi[F]
+  implicit def incomingApi: IncomingMessagesApi
+  implicit def persistenceApi: PersistenceMessagesApi[F]
 }

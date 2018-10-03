@@ -2,7 +2,7 @@ package io.themirrortruth.chat.api
 import cats.Functor
 import cats.instances.all._
 import cats.syntax.all._
-import io.themirrortruth.chat.entity.User
+import io.themirrortruth.chat.domain.User
 
 object UserApiToKvStoreApiInterpreter {
 

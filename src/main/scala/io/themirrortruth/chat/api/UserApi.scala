@@ -1,5 +1,5 @@
 package io.themirrortruth.chat.api
-import io.themirrortruth.chat.entity.User
+import io.themirrortruth.chat.domain.User
 import simulacrum.typeclass
 
 @typeclass trait UserApi[F[_]] {

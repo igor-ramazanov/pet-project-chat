@@ -1,7 +1,6 @@
 package io.themirrortruth.chat
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Directives._
@@ -18,8 +17,9 @@ import io.themirrortruth.chat.api.{
   PersistenceMessagesApi,
   UserApi
 }
-import io.themirrortruth.chat.entity.ChatMessage._
-import io.themirrortruth.chat.entity.User
+import io.themirrortruth.chat.domain.ChatMessage._
+import io.themirrortruth.chat.domain.ChatMessageJsonSupport._
+import io.themirrortruth.chat.domain.User
 import io.themirrortruth.chat.interpreter.redis.RedisInterpreters
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -34,9 +34,7 @@ object Bootloader {
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val messageStrictTimeout = 1.minute
   private val shutdownTimeout = 1.minute
-  private val messagesStrictParallelism = 1
-  private implicit val redisHost: String =
-    sys.env.getOrElse("REDIS_HOST", "localhost")
+  private implicit val redisHost: String = sys.env("REDIS_HOST")
 
   def main(args: Array[String]): Unit = {
     implicit val actorSystem: ActorSystem = ActorSystem()
@@ -52,6 +50,8 @@ object Bootloader {
     import interpreters._
 
     val eventualBinding = Http().bindAndHandle(constructRoutes, "0.0.0.0", 8080)
+    eventualBinding.foreach(_ =>
+      logger.info("Server is listening on 8080 port"))
 
     sys
       .addShutdownHook {
@@ -70,33 +70,43 @@ object Bootloader {
       PersistenceApi: PersistenceMessagesApi[F]
   ): Route = {
     path("signin") {
-      entity(as[User]) { user =>
-        onComplete(UserApi.find(user.id, user.password).unsafeToFuture) {
-          case Success(Some(_)) =>
+      parameters(("id", "password")) { (id, password) =>
+        logger.debug(s"Sign in request start, id: '$id'")
+        onComplete(UserApi.find(id, password).unsafeToFuture) {
+          case Success(Some(user)) =>
+            logger.debug(s"Sign in request success, id: '$id'")
             handleWebSocketMessages(createWebSocketFlow(user))
           case Success(None) =>
+            logger.debug(s"Sign in request forbidden, id: '$id'")
             complete(StatusCodes.Forbidden)
           case Failure(ex) =>
             logger.error(
-              s"Couldn't check user credentials. Id - ${user.id}, error message: ${ex.getMessage}",
+              s"Couldn't check user credentials. Id - $id, error message: ${ex.getMessage}",
               ex)
             complete(StatusCodes.InternalServerError)
         }
       }
     } ~ path("signup") {
-      entity(as[User]) { user =>
-        onComplete(UserApi.save(user).unsafeToFuture) {
-          case Success(Right(_)) =>
-            complete(StatusCodes.OK)
-          case Success(Left(_)) =>
-            complete(StatusCodes.Conflict)
-          case Failure(ex) =>
-            logger.error(
-              s"Couldn't save user '${user.id}'. Error message: ${ex.getMessage}",
-              ex)
-            complete(StatusCodes.InternalServerError)
+      post {
+        parameters(("id", "password")) { (id, password) =>
+          logger.debug(s"Sign up request start, id: '$id'")
+          onComplete(UserApi.save(User(id, password)).unsafeToFuture) {
+            case Success(Right(_)) =>
+              logger.debug(s"Sign up request success, id: '$id'")
+              complete(StatusCodes.OK)
+            case Success(Left(reason)) =>
+              logger.debug(s"Sign up request forbidden: $reason, id: '$id'")
+              complete(StatusCodes.Conflict)
+            case Failure(ex) =>
+              logger.error(
+                s"Couldn't save user '$id'. Error message: ${ex.getMessage}",
+                ex)
+              complete(StatusCodes.InternalServerError)
+          }
         }
       }
+    } ~ path("status") {
+      complete(StatusCodes.OK)
     }
   }
 
@@ -120,7 +130,7 @@ object Bootloader {
     }
 
     val sink = Flow[Message]
-      .mapAsync(messagesStrictParallelism)(
+      .mapAsync(Runtime.getRuntime.availableProcessors())(
         _.asTextMessage.asScala.toStrict(messageStrictTimeout))
       .map(
         _.text.parseJson

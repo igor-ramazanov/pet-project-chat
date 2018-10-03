@@ -3,8 +3,9 @@ package io.themirrortruth.chat.interpreter.redis
 import cats.effect.{Async, Timer}
 import cats.syntax.all._
 import io.themirrortruth.chat.Utils._
-import io.themirrortruth.chat.entity.ChatMessage._
-import io.themirrortruth.chat.entity.User
+import io.themirrortruth.chat.domain.ChatMessage._
+import io.themirrortruth.chat.domain.ChatMessageJsonSupport._
+import io.themirrortruth.chat.domain.User
 import io.themirrortruth.chat.api.PersistenceMessagesApi
 import org.slf4j.LoggerFactory
 import scredis._

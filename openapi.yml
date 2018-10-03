@@ -22,9 +22,9 @@ components:
             - password
 paths:
   /signin:
-    post:
+    get:
       summary: Sign in as some user, on success upgraded to WebSocket protocol for realtime interaction
-      parameters: 
+      parameters:
       - in: header
         name: Connection
         required: true
@@ -37,8 +37,16 @@ paths:
         schema:
           type: string
           enum: [websocket]
-      requestBody:
-        $ref: "#/components/requestBodies/User"
+      - in: query
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: password
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Ok

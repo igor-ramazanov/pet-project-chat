@@ -1,11 +1,11 @@
-package io.themirrortruth.chat.entity
+package io.themirrortruth.chat.domain
 
 import akka.http.scaladsl.model.DateTime
 import spray.json.{DefaultJsonProtocol, _}
 
 sealed trait ChatMessage extends Product with Serializable
 
-object ChatMessage extends DefaultJsonProtocol {
+object ChatMessage {
   final case class IncomingChatMessage(to: String, payload: String)
       extends ChatMessage {
     def asGeneral(user: User) =
@@ -19,6 +19,14 @@ object ChatMessage extends DefaultJsonProtocol {
                                       payload: String,
                                       dateTime: DateTime) {
     def asOutgoing = OutgoingChatMessage(from, payload, dateTime)
+  }
+}
+
+object ChatMessageJsonSupport extends DefaultJsonProtocol {
+  import io.themirrortruth.chat.domain.ChatMessage.{
+    GeneralChatMessage,
+    IncomingChatMessage,
+    OutgoingChatMessage
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.OptionPartial"))

@@ -1,6 +1,6 @@
 package io.themirrortruth.chat.api
-import io.themirrortruth.chat.entity.User
-import io.themirrortruth.chat.entity.ChatMessage.GeneralChatMessage
+import io.themirrortruth.chat.domain.User
+import io.themirrortruth.chat.domain.ChatMessage.GeneralChatMessage
 import org.reactivestreams.Publisher
 
 trait IncomingMessagesApi {

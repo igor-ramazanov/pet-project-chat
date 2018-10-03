@@ -4,8 +4,9 @@ import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy, QueueOfferResult}
 import io.themirrortruth.chat.Utils._
 import io.themirrortruth.chat.api._
-import io.themirrortruth.chat.entity._
-import io.themirrortruth.chat.entity.ChatMessage._
+import io.themirrortruth.chat.domain._
+import io.themirrortruth.chat.domain.ChatMessage._
+import io.themirrortruth.chat.domain.ChatMessageJsonSupport._
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
 import scredis._

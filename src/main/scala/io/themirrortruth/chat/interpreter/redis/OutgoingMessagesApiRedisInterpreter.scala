@@ -4,7 +4,8 @@ import cats.effect.{Async, Timer}
 import cats.syntax.all._
 import io.themirrortruth.chat.Utils._
 import io.themirrortruth.chat.api.OutgoingMesssagesApi
-import io.themirrortruth.chat.entity.ChatMessage.GeneralChatMessage
+import io.themirrortruth.chat.domain.ChatMessage.GeneralChatMessage
+import io.themirrortruth.chat.domain.ChatMessageJsonSupport._
 import org.slf4j.LoggerFactory
 import scredis.Redis
 import spray.json._
