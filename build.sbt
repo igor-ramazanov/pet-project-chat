@@ -13,7 +13,7 @@ lazy val root = (project in file("."))
 libraryDependencies ++= Seq(
   "io.monix" %% "monix-eval" % "3.0.0-RC1",
   "com.typesafe.akka" %% "akka-http" % "10.1.5",
-  "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5",
+  "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5" % "compile,it,test",
   "com.github.mpilquist" %% "simulacrum" % "0.13.0",
   "eu.timepit" %% "refined" % "0.9.2",
   ("com.github.scredis" %% "scredis" % "2.1.7")

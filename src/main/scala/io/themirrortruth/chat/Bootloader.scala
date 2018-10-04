@@ -1,6 +1,7 @@
 package io.themirrortruth.chat
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Directives._
@@ -20,6 +21,7 @@ import io.themirrortruth.chat.api.{
 import io.themirrortruth.chat.domain.ChatMessage._
 import io.themirrortruth.chat.domain.ChatMessageJsonSupport._
 import io.themirrortruth.chat.domain.User
+import io.themirrortruth.chat.domain.UserJsonSupport._
 import io.themirrortruth.chat.interpreter.redis.RedisInterpreters
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -31,6 +33,7 @@ import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
 
 object Bootloader {
+
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val messageStrictTimeout = 1.minute
   private val shutdownTimeout = 1.minute
@@ -88,18 +91,19 @@ object Bootloader {
       }
     } ~ path("signup") {
       post {
-        parameters(("id", "password")) { (id, password) =>
-          logger.debug(s"Sign up request start, id: '$id'")
-          onComplete(UserApi.save(User(id, password)).unsafeToFuture) {
+        entity(as[User]) { user =>
+          logger.debug(s"Sign up request start, id: '${user.id}'")
+          onComplete(UserApi.save(user).unsafeToFuture) {
             case Success(Right(_)) =>
-              logger.debug(s"Sign up request success, id: '$id'")
+              logger.debug(s"Sign up request success, id: '${user.id}'")
               complete(StatusCodes.OK)
             case Success(Left(reason)) =>
-              logger.debug(s"Sign up request forbidden: $reason, id: '$id'")
+              logger.debug(
+                s"Sign up request forbidden: $reason, id: '${user.id}'")
               complete(StatusCodes.Conflict)
             case Failure(ex) =>
               logger.error(
-                s"Couldn't save user '$id'. Error message: ${ex.getMessage}",
+                s"Couldn't save user '${user.id}'. Error message: ${ex.getMessage}",
                 ex)
               complete(StatusCodes.InternalServerError)
           }

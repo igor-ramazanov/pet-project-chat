@@ -4,7 +4,13 @@ import java.time
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.HttpRequest
+import akka.http.scaladsl.model.headers.`Content-Type`
+import akka.http.scaladsl.model.{
+  HttpEntity,
+  HttpMethods,
+  HttpRequest,
+  MediaTypes
+}
 import akka.http.scaladsl.model.ws.{Message, WebSocketRequest}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
@@ -21,6 +27,8 @@ import org.testcontainers.containers.wait.strategy.{
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import spray.json._
+import DefaultJsonProtocol._
 
 class IntegrationTests
     extends TestKit(ActorSystem("IntegrationTests"))
@@ -64,6 +72,11 @@ class IntegrationTests
     assert(signIn("1", "1")._1 == 403)
   }
 
+  test("it should response with 403 if /signup conflicts with existing user") {
+    assert(signUp("1", "1") == 200)
+    assert(signUp("1", "2") == 409)
+  }
+
   def signIn[T](id: String, password: String)(
       implicit
       flow: Flow[Message, Message, T]): (Int, T) = {
@@ -76,12 +89,16 @@ class IntegrationTests
     (Await.result(f.map(_.response.status.intValue()), 5.seconds), v)
   }
 
-  def signUp(id: String, passwordOpt: Option[String]): Int = {
-    val password = passwordOpt.getOrElse(id)
+  def signUp(id: String, password: String): Int = {
     val f = Http()
       .singleRequest(
         HttpRequest(
-          uri = s"http://localhost:8080/signup?id=$id&password=$password"
+          method = HttpMethods.POST,
+          uri = s"http://localhost:8080/signup",
+          entity =
+            HttpEntity(MediaTypes.`application/json`,
+                       JsObject("id" -> JsString(id),
+                                "password" -> JsString(password)).compactPrint)
         ))
       .map(_.status.intValue())
     Await.result(f, 5.seconds)
