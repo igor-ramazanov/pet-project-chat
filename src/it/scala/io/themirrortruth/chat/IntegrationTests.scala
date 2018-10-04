@@ -4,14 +4,13 @@ import java.time
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.headers.`Content-Type`
+import akka.http.scaladsl.model.ws.{Message, WebSocketRequest}
 import akka.http.scaladsl.model.{
   HttpEntity,
   HttpMethods,
   HttpRequest,
   MediaTypes
 }
-import akka.http.scaladsl.model.ws.{Message, WebSocketRequest}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.testkit.TestKit
@@ -20,15 +19,14 @@ import org.scalatest.FunSuiteLike
 import org.slf4j.{Logger, LoggerFactory}
 import org.testcontainers.containers.output.OutputFrame
 import org.testcontainers.containers.wait.strategy.{
-  LogMessageWaitStrategy,
   WaitStrategy,
   WaitStrategyTarget
 }
+import spray.json._
+import Utils._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import spray.json._
-import DefaultJsonProtocol._
 
 class IntegrationTests
     extends TestKit(ActorSystem("IntegrationTests"))
@@ -59,7 +57,9 @@ class IntegrationTests
     }
   ).configure { c =>
     c.withLogConsumer((t: OutputFrame) => println(s">>> ${t.getUtf8String}"))
-    c.withEnv("REDIS_HOST", redis.containerInfo.getNetworkSettings.getIpAddress)
+    c.withEnv("REDIS_HOST",
+               redis.containerInfo.getNetworkSettings.getIpAddress)
+      .discard()
   }
 
   override val container = MultipleContainers(redis, app)
@@ -68,13 +68,21 @@ class IntegrationTests
     Flow.fromSinkAndSource(Sink.foreach[Message](_ => ()),
                            Source.empty[Message])
 
-  test("it should response with 403 if /signin with wrong credentials") {
+  test(
+    "it should response with 403 'Forbidden' if /signin with wrong credentials") {
     assert(signIn("1", "1")._1 == 403)
   }
 
-  test("it should response with 403 if /signup conflicts with existing user") {
+  test(
+    "it should response with 409 'Conflict' if /signup conflicts with existing user") {
     assert(signUp("1", "1") == 200)
     assert(signUp("1", "2") == 409)
+  }
+
+  test(
+    "it should response with 101 'Switching protocols' connection on /signin if credentials are right") {
+    assert(signUp("1", "1") == 200)
+    assert(signIn("1", "1")._1 == 101)
   }
 
   def signIn[T](id: String, password: String)(
