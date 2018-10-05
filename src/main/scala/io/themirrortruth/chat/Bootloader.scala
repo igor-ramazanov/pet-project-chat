@@ -9,6 +9,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import cats.effect.Effect
+import eu.timepit.refined.types.string.NonEmptyString
 import io.themirrortruth.chat.Utils.ExecuteToFuture.ops._
 import io.themirrortruth.chat.Utils.{AnyOps, ExecuteToFuture}
 import io.themirrortruth.chat.api.UserApiToKvStoreApiInterpreter._
@@ -73,39 +74,53 @@ object Bootloader {
       PersistenceApi: PersistenceMessagesApi[F]
   ): Route = {
     path("signin") {
-      parameters(("id", "password")) { (id, password) =>
-        logger.debug(s"Sign in request start, id: '$id'")
-        onComplete(UserApi.find(id, password).unsafeToFuture) {
-          case Success(Some(user)) =>
-            logger.debug(s"Sign in request success, id: '$id'")
-            handleWebSocketMessages(createWebSocketFlow(user))
-          case Success(None) =>
-            logger.debug(s"Sign in request forbidden, id: '$id'")
-            complete(StatusCodes.Forbidden)
-          case Failure(ex) =>
-            logger.error(
-              s"Couldn't check user credentials. Id - $id, error message: ${ex.getMessage}",
-              ex)
-            complete(StatusCodes.InternalServerError)
+      parameters(("id", "password")) { (idRaw, passwordRaw) =>
+        (for {
+          id <- NonEmptyString.from(idRaw)
+          password <- NonEmptyString.from(passwordRaw)
+        } yield {
+          logger.debug(s"Sign in request start, id: '$id'")
+          onComplete(UserApi.find(id.value, password.value).unsafeToFuture) {
+            case Success(Some(user)) =>
+              logger.debug(s"Sign in request success, id: '$id'")
+              handleWebSocketMessages(createWebSocketFlow(user))
+            case Success(None) =>
+              logger.debug(s"Sign in request forbidden, id: '$id'")
+              complete(StatusCodes.Forbidden)
+            case Failure(ex) =>
+              logger.error(
+                s"Couldn't check user credentials. Id - $id, error message: ${ex.getMessage}",
+                ex)
+              complete(StatusCodes.InternalServerError)
+          }
+        }).getOrElse {
+          complete(StatusCodes.BadRequest)
         }
       }
     } ~ path("signup") {
       post {
         entity(as[User]) { user =>
-          logger.debug(s"Sign up request start, id: '${user.id}'")
-          onComplete(UserApi.save(user).unsafeToFuture) {
-            case Success(Right(_)) =>
-              logger.debug(s"Sign up request success, id: '${user.id}'")
-              complete(StatusCodes.OK)
-            case Success(Left(reason)) =>
-              logger.debug(
-                s"Sign up request forbidden: $reason, id: '${user.id}'")
-              complete(StatusCodes.Conflict)
-            case Failure(ex) =>
-              logger.error(
-                s"Couldn't save user '${user.id}'. Error message: ${ex.getMessage}",
-                ex)
-              complete(StatusCodes.InternalServerError)
+          (for {
+            _ <- NonEmptyString.from(user.id)
+            _ <- NonEmptyString.from(user.password)
+          } yield {
+            logger.debug(s"Sign up request start, id: '${user.id}'")
+            onComplete(UserApi.save(user).unsafeToFuture) {
+              case Success(Right(_)) =>
+                logger.debug(s"Sign up request success, id: '${user.id}'")
+                complete(StatusCodes.OK)
+              case Success(Left(reason)) =>
+                logger.debug(
+                  s"Sign up request forbidden: $reason, id: '${user.id}'")
+                complete(StatusCodes.Conflict)
+              case Failure(ex) =>
+                logger.error(
+                  s"Couldn't save user '${user.id}'. Error message: ${ex.getMessage}",
+                  ex)
+                complete(StatusCodes.InternalServerError)
+            }
+          }).getOrElse {
+            complete(StatusCodes.BadRequest)
           }
         }
       }

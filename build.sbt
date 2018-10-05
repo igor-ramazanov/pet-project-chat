@@ -16,6 +16,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5" % "compile,it,test",
   "com.github.mpilquist" %% "simulacrum" % "0.13.0",
   "eu.timepit" %% "refined" % "0.9.2",
+  "eu.timepit" %% "refined-cats" % "0.9.2",
   ("com.github.scredis" %% "scredis" % "2.1.7")
     .exclude("com.typesafe.akka", "akka-actor_2.12")
     ,
@@ -24,6 +25,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-slf4j" % "2.5.12" % "compile,it,test",
   "com.typesafe.akka" %% "akka-http-testkit" % "10.1.5" % "it,test",
   "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
+  "org.scalacheck" %% "scalacheck" % "1.14.0" % "it,test",
   "com.dimafeng" %% "testcontainers-scala" % "0.20.0" % "it,test"
 )
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")

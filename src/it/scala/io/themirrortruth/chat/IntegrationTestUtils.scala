@@ -1,6 +1,6 @@
 package io.themirrortruth.chat
 
-object Utils {
+object IntegrationTestUtils {
   implicit class AnyOps(val `this`: Any) extends AnyVal {
     @specialized def discard(): Unit = ()
   }
