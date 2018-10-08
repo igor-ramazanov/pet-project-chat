@@ -1,4 +1,5 @@
 package io.themirrortruth.chat
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
@@ -19,7 +20,10 @@ import io.themirrortruth.chat.api.{
   PersistenceMessagesApi,
   UserApi
 }
-import io.themirrortruth.chat.domain.ChatMessage._
+import io.themirrortruth.chat.domain.ChatMessage.{
+  GeneralChatMessage,
+  IncomingChatMessage
+}
 import io.themirrortruth.chat.domain.ChatMessageJsonSupport._
 import io.themirrortruth.chat.domain.User
 import io.themirrortruth.chat.domain.UserJsonSupport._
@@ -35,10 +39,12 @@ import scala.util.{Failure, Success}
 
 object Bootloader {
 
-  private val logger = LoggerFactory.getLogger(this.getClass)
+  private lazy val logger = LoggerFactory.getLogger(this.getClass)
   private val messageStrictTimeout = 1.minute
   private val shutdownTimeout = 1.minute
   private implicit val redisHost: String = sys.env("REDIS_HOST")
+  private val logLevel = sys.env.getOrElse("LOG_LEVEL", "INFO")
+  sys.props.update("LOG_LEVEL", logLevel)
 
   def main(args: Array[String]): Unit = {
     implicit val actorSystem: ActorSystem = ActorSystem()
@@ -83,7 +89,15 @@ object Bootloader {
           onComplete(UserApi.find(id.value, password.value).unsafeToFuture) {
             case Success(Some(user)) =>
               logger.debug(s"Sign in request success, id: '$id'")
-              handleWebSocketMessages(createWebSocketFlow(user))
+              onComplete(createWebSocketFlow(user).unsafeToFuture) {
+                case Success(flow) =>
+                  handleWebSocketMessages(flow)
+                case Failure(ex) =>
+                  logger.error(
+                    s"Couldn't create WebSocket flow for user '${user.id}'",
+                    ex)
+                  complete(StatusCodes.InternalServerError)
+              }
             case Success(None) =>
               logger.debug(s"Sign in request forbidden, id: '$id'")
               complete(StatusCodes.Forbidden)
@@ -134,29 +148,52 @@ object Bootloader {
   )(implicit materializer: ActorMaterializer,
     IncomingApi: IncomingMessagesApi,
     OutgoingApi: OutgoingMesssagesApi[F],
-    PersistenceApi: PersistenceMessagesApi[F]): Flow[Message, Message, Any] = {
-    val source = Source
-      .fromPublisher(
-        IncomingApi
-          .subscribe(user))
-      .map(m => TextMessage(m.asOutgoing.toJson.compactPrint))
+    PersistenceApi: PersistenceMessagesApi[F])
+    : F[Flow[Message, Message, NotUsed]] = {
+    val source = Effect[F].map(PersistenceApi.ofUserOrdered(user.id)) {
+      messages =>
+        val sourceFlow = Source
+          .fromPublisher(
+            IncomingApi
+              .subscribe(user))
+          .map(m => TextMessage(m.asOutgoing.toJson.compactPrint))
+        val sourcePersistent =
+          Source(messages).map(m =>
+            TextMessage(m.asOutgoing.toJson.compactPrint))
+        sourcePersistent
+          .concat(sourceFlow)
+          .map { m =>
+            logger.debug(s"Outgoing to user '${user.id}': $m")
+            m
+          }
+    }
 
     val saveAndPublish: GeneralChatMessage => F[Unit] = {
+      import cats.syntax.all._
       m: GeneralChatMessage =>
-        val save = PersistenceApi.save(user, m)
-        val publish = OutgoingApi.send(m)
-        Effect[F].flatMap(save)(_ => publish)
+        for {
+          _ <- PersistenceApi.save(m.from, m)
+          _ <- PersistenceApi.save(m.to, m)
+          _ <- OutgoingApi.send(m)
+        } yield ()
     }
 
     val sink = Flow[Message]
+      .map { m =>
+        logger.debug(s"Incoming from user '${user.id}': $m")
+        m
+      }
       .mapAsync(Runtime.getRuntime.availableProcessors())(
         _.asTextMessage.asScala.toStrict(messageStrictTimeout))
-      .map(
-        _.text.parseJson
-          .convertTo[IncomingChatMessage]
-          .asGeneral(user))
-      .to(Sink.foldAsync(())((_, m) => saveAndPublish(m).unsafeToFuture))
+      .map(_.text.parseJson
+        .convertTo[IncomingChatMessage]
+        .asGeneral(user))
+      .to(Sink.foreach[GeneralChatMessage] { m =>
+        saveAndPublish(m).unsafeToFuture.discard()
+      })
 
-    Flow.fromSinkAndSourceCoupled(sink, source)
+    Effect[F].map(source) { s =>
+      Flow.fromSinkAndSource(sink, s)
+    }
   }
 }

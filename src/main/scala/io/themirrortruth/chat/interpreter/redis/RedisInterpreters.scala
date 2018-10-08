@@ -23,6 +23,12 @@ object RedisInterpreters {
   ): InterpretersInstances[F] = {
     val redis = Redis.withActorSystem(host = host)
 
+//    sys
+//      .addShutdownHook {
+//        Await.ready(redis, 1.minute).discard()
+//      }
+//      .discard()
+
     new InterpretersInstances[F] {
       val kvStoreApi: KvStoreApi[String, String, F] =
         KvStoreApiRedisInterpreter[F](redis)

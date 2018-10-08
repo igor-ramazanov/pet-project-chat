@@ -48,10 +48,20 @@ outputStrategy := Some(StdoutOutput)
 trapExit := false
 Global / cancelable := true
 
-IntegrationTest / test := {
+lazy val cleanDockerImages = taskKey[Unit]("Cleans docker images with tag:none")
+
+cleanDockerImages := {
   import scala.sys.process._
-  (Docker / publishLocal).value
   ("docker images -q --filter dangling=true" #| "xargs docker rmi").!!
+}
+
+Docker / publishLocal := {
+  (Docker / publishLocal).value
+  cleanDockerImages.value
+}
+
+IntegrationTest / test := {
+  (Docker / publishLocal).value
   (IntegrationTest / test).value
 }
 

@@ -5,9 +5,9 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.ws.{Message, WebSocketRequest}
+import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.testkit.TestKit
 import akka.{Done, NotUsed}
 import com.dimafeng.testcontainers._
@@ -61,6 +61,7 @@ class IntegrationTests
     c.withEnv("REDIS_HOST",
                redis.containerInfo.getNetworkSettings.getIpAddress)
       .discard()
+    c.withEnv("LOG_LEVEL", "DEBUG").discard()
   }
 
   override val container = MultipleContainers(redis, app)
@@ -78,7 +79,7 @@ class IntegrationTests
     forAll(Gen.alphaNumStr) { s: String =>
       whenever(s.nonEmpty) {
         val (status, _) = signIn(s, s)
-        Forbidden.intValue == status
+        Forbidden == status
       }
     }
   }
@@ -91,7 +92,7 @@ class IntegrationTests
 
     assert(s1 == s2)
     assert(s1 == s3)
-    assert(s1 == BadRequest.intValue)
+    assert(s1 == BadRequest)
   }
 
   test(
@@ -102,17 +103,17 @@ class IntegrationTests
 
     assert(s1 == s2)
     assert(s1 == s3)
-    assert(s1 == BadRequest.intValue)
+    assert(s1 == BadRequest)
   }
 
   test(
     "it should response with 409 'Conflict' if /signup conflicts with existing user") {
-    forAll { (s1: String, s2: String) =>
+    forAll(Gen.alphaNumStr, Gen.alphaNumStr) { (s1: String, s2: String) =>
       whenever(s1.nonEmpty && s2.nonEmpty) {
         val status1 = signUp(s1, s1)
         val status2 = signUp(s1, s1)
         val status3 = signUp(s1, s2)
-        status1 == OK.intValue && status2 == Conflict.intValue && status3 == Conflict.intValue
+        status1 == OK && status2 == Conflict && status3 == Conflict
       }
     }
   }
@@ -123,24 +124,39 @@ class IntegrationTests
       whenever(s.nonEmpty) {
         val s1 = signUp(s, s)
         val s2 = signIn(s, s)._1
-        s1 === OK && s2 === SwitchingProtocols
+        s1 == OK && s2 == SwitchingProtocols
       }
     }
   }
 
+  test("it should receive messages from other users on connection") {
+    signUp("1", "1")
+    signUp("2", "2")
+    val (status1, _) = sendAndReceiveMessages(
+      "1",
+      "1",
+      List(createMessage("2", "test_1"), createMessage("2", "test_2")))
+    assert(status1 == SwitchingProtocols)
+    val (status2, messages) = sendAndReceiveMessages("2", "2", List.empty)
+    assert(status2 == SwitchingProtocols)
+    assert(messages.size == 2)
+    assert(messages.head == "test_1")
+    assert(messages(1) == "test_2")
+  }
+
   def signIn[T](id: String, password: String)(
       implicit
-      flow: Flow[Message, Message, T]): (Int, T) = {
+      flow: Flow[Message, Message, T]): (StatusCode, T) = {
     val (f, v) = Http()
       .singleWebSocketRequest(
         WebSocketRequest(
           s"ws://localhost:8080/signin?id=$id&password=$password"),
         flow
       )
-    (Await.result(f.map(_.response.status.intValue()), 5.seconds), v)
+    (Await.result(f.map(_.response.status), 5.seconds), v)
   }
 
-  def signUp(id: String, password: String): Int = {
+  def signUp(id: String, password: String): StatusCode = {
     val f = Http()
       .singleRequest(
         HttpRequest(
@@ -151,13 +167,29 @@ class IntegrationTests
                        JsObject("id" -> JsString(id),
                                 "password" -> JsString(password)).compactPrint)
         ))
-      .map(_.status.intValue())
+      .map(_.status)
     Await.result(f, 5.seconds)
   }
 
-  def sendMessages(id: String,
-                   password: String,
-                   messages: Seq[String]): List[String] = ???
+  def sendAndReceiveMessages(
+      id: String,
+      password: String,
+      messages: List[String]): (StatusCode, Seq[String]) = {
+    val (status, f) = signIn(id, password)(
+      Flow.fromSinkAndSourceMat(
+        Flow[Message]
+          .mapAsync(1)(m => m.asTextMessage.asScala.toStrict(5.seconds))
+          .toMat(Sink.seq)(Keep.right),
+        Source(messages).map(TextMessage.apply))(Keep.left))
+    (status,
+     Await.result(f.map(
+                    _.map(
+                      _.text.parseJson.asJsObject
+                        .fields("payload")
+                        .asInstanceOf[JsString]
+                        .value)),
+                  5.seconds))
+  }
 
   def createMessage(to: String, payload: String): String =
     JsObject("to" -> JsString(to), "payload" -> JsString(payload)).compactPrint
