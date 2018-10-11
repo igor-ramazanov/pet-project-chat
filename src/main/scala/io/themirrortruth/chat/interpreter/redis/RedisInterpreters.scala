@@ -9,7 +9,7 @@ import io.themirrortruth.chat.api.{
   OutgoingMesssagesApi,
   PersistenceMessagesApi
 }
-import scredis.Redis
+import scredis.{Redis, SubscriberClient}
 
 import scala.concurrent.ExecutionContext
 
@@ -22,12 +22,7 @@ object RedisInterpreters {
       ec: ExecutionContext
   ): InterpretersInstances[F] = {
     val redis = Redis.withActorSystem(host = host)
-
-//    sys
-//      .addShutdownHook {
-//        Await.ready(redis, 1.minute).discard()
-//      }
-//      .discard()
+    val subscriberClient = () => SubscriberClient(host = host)
 
     new InterpretersInstances[F] {
       val kvStoreApi: KvStoreApi[String, String, F] =
@@ -35,7 +30,7 @@ object RedisInterpreters {
       val outgoingApi: OutgoingMesssagesApi[F] =
         OutgoingMessagesApiRedisInterpreter[F](redis)
       val incomingApi: IncomingMessagesApi =
-        IncomingMessagesApiRedisInterpreter(redis)
+        IncomingMessagesApiRedisInterpreter(subscriberClient)
       val persistenceApi: PersistenceMessagesApi[F] =
         PersistenceMessagesApiRedisInterpreter[F](redis)
     }

@@ -8,25 +8,22 @@ sealed trait ChatMessage extends Product with Serializable
 object ChatMessage {
   final case class IncomingChatMessage(to: String, payload: String)
       extends ChatMessage {
-    def asGeneral(user: User) =
-      GeneralChatMessage(user.id, to, payload, DateTime.now)
+    def asGeneral(from: User) =
+      GeneralChatMessage(from = from.id,
+                         to = to,
+                         payload = payload,
+                         dateTime = DateTime.now)
   }
-  final case class OutgoingChatMessage(from: String,
-                                       payload: String,
-                                       datetime: DateTime)
   final case class GeneralChatMessage(from: String,
                                       to: String,
                                       payload: String,
-                                      dateTime: DateTime) {
-    def asOutgoing = OutgoingChatMessage(from, payload, dateTime)
-  }
+                                      dateTime: DateTime)
 }
 
 object ChatMessageJsonSupport extends DefaultJsonProtocol {
   import io.themirrortruth.chat.domain.ChatMessage.{
     GeneralChatMessage,
-    IncomingChatMessage,
-    OutgoingChatMessage
+    IncomingChatMessage
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.OptionPartial"))
@@ -42,8 +39,6 @@ object ChatMessageJsonSupport extends DefaultJsonProtocol {
 
   implicit val incomingChatMessageFormat: RootJsonFormat[IncomingChatMessage] =
     jsonFormat2(IncomingChatMessage)
-  implicit val outgoingChatMessageFormat: RootJsonFormat[OutgoingChatMessage] =
-    jsonFormat3(OutgoingChatMessage)
   implicit val generalChatMessageFormat: RootJsonFormat[GeneralChatMessage] =
     jsonFormat4(GeneralChatMessage)
 }

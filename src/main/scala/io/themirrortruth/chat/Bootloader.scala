@@ -152,14 +152,13 @@ object Bootloader {
     : F[Flow[Message, Message, NotUsed]] = {
     val source = Effect[F].map(PersistenceApi.ofUserOrdered(user.id)) {
       messages =>
+        val sourcePersistent =
+          Source(messages).map(m => TextMessage(m.toJson.compactPrint))
         val sourceFlow = Source
           .fromPublisher(
             IncomingApi
-              .subscribe(user))
-          .map(m => TextMessage(m.asOutgoing.toJson.compactPrint))
-        val sourcePersistent =
-          Source(messages).map(m =>
-            TextMessage(m.asOutgoing.toJson.compactPrint))
+              .subscribe(user.id))
+          .map(m => TextMessage(m.toJson.compactPrint))
         sourcePersistent
           .concat(sourceFlow)
           .map { m =>

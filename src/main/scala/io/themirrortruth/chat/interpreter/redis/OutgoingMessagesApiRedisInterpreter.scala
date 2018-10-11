@@ -18,6 +18,9 @@ class OutgoingMessagesApiRedisInterpreter[F[_]: Async: Timer] private (
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   override def send(generalChatMessage: GeneralChatMessage): F[Unit] = {
+    logger.debug(
+      s"Sending message from '${generalChatMessage.from}' to '${generalChatMessage.to}'")
+
     liftFromFuture(
       redis.publish(generalChatMessage.to,
                     generalChatMessage.toJson.compactPrint),

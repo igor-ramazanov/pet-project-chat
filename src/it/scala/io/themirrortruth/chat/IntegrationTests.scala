@@ -61,7 +61,6 @@ class IntegrationTests
     c.withEnv("REDIS_HOST",
                redis.containerInfo.getNetworkSettings.getIpAddress)
       .discard()
-    c.withEnv("LOG_LEVEL", "DEBUG").discard()
   }
 
   override val container = MultipleContainers(redis, app)
@@ -76,9 +75,9 @@ class IntegrationTests
 
   test(
     "it should response with 403 'Forbidden' if /signin with wrong credentials") {
-    forAll(Gen.alphaNumStr) { s: String =>
-      whenever(s.nonEmpty) {
-        val (status, _) = signIn(s, s)
+    forAll(Gen.alphaNumStr) { id: String =>
+      whenever(id.nonEmpty) {
+        val (status, _) = signIn(id, id)
         Forbidden == status
       }
     }
@@ -108,11 +107,11 @@ class IntegrationTests
 
   test(
     "it should response with 409 'Conflict' if /signup conflicts with existing user") {
-    forAll(Gen.alphaNumStr, Gen.alphaNumStr) { (s1: String, s2: String) =>
-      whenever(s1.nonEmpty && s2.nonEmpty) {
-        val status1 = signUp(s1, s1)
-        val status2 = signUp(s1, s1)
-        val status3 = signUp(s1, s2)
+    forAll(Gen.alphaNumStr, Gen.alphaNumStr) { (id1: String, id2: String) =>
+      whenever(id1.nonEmpty && id2.nonEmpty) {
+        val status1 = signUp(id1, id1)
+        val status2 = signUp(id1, id1)
+        val status3 = signUp(id1, id2)
         status1 == OK && status2 == Conflict && status3 == Conflict
       }
     }
@@ -130,18 +129,31 @@ class IntegrationTests
   }
 
   test("it should receive messages from other users on connection") {
-    signUp("1", "1")
-    signUp("2", "2")
-    val (status1, _) = sendAndReceiveMessages(
-      "1",
-      "1",
-      List(createMessage("2", "test_1"), createMessage("2", "test_2")))
-    assert(status1 == SwitchingProtocols)
-    val (status2, messages) = sendAndReceiveMessages("2", "2", List.empty)
-    assert(status2 == SwitchingProtocols)
-    assert(messages.size == 2)
-    assert(messages.head == "test_1")
-    assert(messages(1) == "test_2")
+    forAll(Gen.nonEmptyListOf(Gen.alphaNumChar),
+           Gen.nonEmptyListOf(Gen.alphaNumChar),
+           Gen.nonEmptyListOf(Gen.nonEmptyListOf(Gen.alphaNumChar))) {
+      (id1Raw: List[Char],
+       id2Raw: List[Char],
+       outgoingMessagesRaw: List[List[Char]]) =>
+        val id1 = id1Raw.mkString("")
+        val id2 = id2Raw.mkString("")
+        val outgoingMessages = outgoingMessagesRaw.map(_.mkString(""))
+        signUp(id1, id1)
+        signUp(id2, id2)
+        val (status1, _) =
+          sendAndReceiveMessages(
+            id1,
+            id1,
+            outgoingMessages.map(m => createMessage(id2, m)))
+        val (status2, receivedMessages) =
+          sendAndReceiveMessages(id2, id2, List.empty)
+        status1 == SwitchingProtocols &&
+        status2 == SwitchingProtocols &&
+        receivedMessages.size == outgoingMessages.size &&
+        receivedMessages.zip(outgoingMessages).forall {
+          case (received, sent) => received == sent
+        }
+    }
   }
 
   def signIn[T](id: String, password: String)(
