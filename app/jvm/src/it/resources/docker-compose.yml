@@ -1,0 +1,12 @@
+version: "3"
+services:
+  chat:
+    image: io.github.igorramazanov/chat
+    links:
+    - redis
+    environment:
+    - REDIS_HOST=redis
+    ports:
+    - 8080:8080
+  redis:
+    image: redis

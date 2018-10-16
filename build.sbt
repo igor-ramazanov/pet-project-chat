@@ -1,69 +1,9 @@
-import sbt.enablePlugins
-name := "chat-akka"
-version := "1.0"
-scalaVersion := "2.12.7"
-organization := "io.themirrortruth"
-
-resolvers += Resolver.sonatypeRepo("releases")
-
-lazy val root = (project in file("."))
-    .configs(IntegrationTest)
-    .settings(Defaults.itSettings: _*)
-
-libraryDependencies ++= Seq(
-  "io.monix" %% "monix-eval" % "3.0.0-RC1",
-  "com.typesafe.akka" %% "akka-http" % "10.1.5",
-  "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5" % "compile,it,test",
-  "com.github.mpilquist" %% "simulacrum" % "0.13.0",
-  "eu.timepit" %% "refined" % "0.9.2",
-  "eu.timepit" %% "refined-cats" % "0.9.2",
-  ("com.github.scredis" %% "scredis" % "2.1.7")
-    .exclude("com.typesafe.akka", "akka-actor_2.12")
-    ,
-  "com.typesafe.akka" %% "akka-stream" % "2.5.12",
-  "ch.qos.logback" % "logback-classic" % "1.2.3",
-  "com.typesafe.akka" %% "akka-slf4j" % "2.5.12" % "compile,it,test",
-  "com.typesafe.akka" %% "akka-http-testkit" % "10.1.5" % "it,test",
-  "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
-  "org.scalacheck" %% "scalacheck" % "1.14.0" % "it,test",
-  "com.dimafeng" %% "testcontainers-scala" % "0.20.0" % "it,test"
-)
-addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
-addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
-enablePlugins(JavaServerAppPackaging)
-enablePlugins(AshScriptPlugin)
-enablePlugins(DockerPlugin)
-
-packageName in Docker := "io.themirrortruth/chat"
-dockerUpdateLatest:= true
-dockerExposedPorts := Seq(8080)
-dockerBaseImage := "openjdk:8-jre-alpine"
-
-wartremoverErrors ++= Warts.unsafe
-wartremoverExcluded ++= Seq(baseDirectory.value / "src" / "it", baseDirectory.value / "src" / "test")
-
-fork := true
-connectInput := true
-outputStrategy := Some(StdoutOutput)
-trapExit := false
-Global / cancelable := true
+import sbt.addCompilerPlugin
+import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 lazy val cleanDockerImages = taskKey[Unit]("Cleans docker images with tag:none")
 
-cleanDockerImages := {
-  import scala.sys.process._
-  ("docker images -q --filter dangling=true" #| "xargs docker rmi").!!
-}
-
-Docker / publishLocal := {
-  (Docker / publishLocal).value
-  cleanDockerImages.value
-}
-
-IntegrationTest / test := {
-  (Docker / publishLocal).value
-  (IntegrationTest / test).value
-}
+val versionOfScala = "2.12.7"
 
 val compilerOptions = Seq(
   // format: off
@@ -115,6 +55,70 @@ val compilerOptions = Seq(
   // format: on
 )
 
-Compile / scalacOptions ++= compilerOptions
-//Test / scalacOptions --= Seq("-Ywarn-value-discard")
-IntegrationTest/ scalacOptions --= Seq("-Xfatal-warnings", "-deprecation")
+lazy val root = project in file(".")
+
+val sharedSettings = Seq(
+  scalaVersion := "2.12.7",
+  organization := "io.github.igorramazanov",
+  libraryDependencies ++= Seq(
+    "io.monix" %%% "monix-eval" % "3.0.0-RC1",
+    "com.github.mpilquist" %%% "simulacrum" % "0.13.0",
+    "eu.timepit" %%% "refined" % "0.9.2",
+    "eu.timepit" %%% "refined-cats" % "0.9.2"
+  ),
+  resolvers += Resolver.sonatypeRepo("releases"),
+  wartremoverErrors ++= Warts.unsafe,
+  Compile / scalacOptions := ("-Xplugin:" + (baseDirectory.in(root).value / ("paradise_" + scalaVersion.value + "-2.1.1.jar")).absolutePath) +: compilerOptions,
+  autoCompilerPlugins := true,
+  addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8")
+)
+
+val jvmSettings = Seq(
+  name := "pet-project-chat-backend",
+  libraryDependencies ++= Seq(
+    "com.typesafe.akka" %% "akka-http" % "10.1.5",
+    "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5" % "compile,it,test",
+    ("com.github.scredis" %% "scredis" % "2.1.7")
+      .exclude("com.typesafe.akka", "akka-actor_2.12"),
+    "com.typesafe.akka" %% "akka-stream" % "2.5.12",
+    "ch.qos.logback" % "logback-classic" % "1.2.3",
+    "com.typesafe.akka" %% "akka-slf4j" % "2.5.12" % "compile,it,test",
+    "com.typesafe.akka" %% "akka-http-testkit" % "10.1.5" % "it,test",
+    "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
+    "org.scalacheck" %% "scalacheck" % "1.14.0" % "it,test",
+    "com.dimafeng" %% "testcontainers-scala" % "0.20.0" % "it,test"
+  ),
+  packageName in Docker := "io.github.igorramazanov/chat",
+  dockerUpdateLatest:= true,
+  dockerExposedPorts := Seq(8080),
+  dockerBaseImage := "openjdk:8-jre-alpine",
+  cleanDockerImages := {
+    import scala.sys.process._
+    ("docker images -q --filter dangling=true" #| "xargs docker rmi").!!
+  },
+  Docker / publishLocal := {
+    (Docker / publishLocal).value
+    cleanDockerImages.value
+  },
+  IntegrationTest / test := {
+    (Docker / publishLocal).value
+    (IntegrationTest / test).value
+  },
+  IntegrationTest/ scalacOptions --= Seq("-Xfatal-warnings", "-deprecation")
+) ++ Defaults.itSettings
+
+val jsSettings = Seq(
+  name := "pet-project-chat-frontend",
+  libraryDependencies ++= Seq(
+    "com.github.japgolly.scalajs-react" %%% "core" % "1.3.1"
+  )
+)
+
+lazy val app = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Full)
+  .settings(sharedSettings: _*)
+  .jvmSettings(jvmSettings: _*)
+  .jsSettings(jsSettings: _*)
+
+lazy val appJvm = app.jvm.configs(IntegrationTest).enablePlugins(JavaServerAppPackaging, AshScriptPlugin, DockerPlugin)
+lazy val appJs = app.js
