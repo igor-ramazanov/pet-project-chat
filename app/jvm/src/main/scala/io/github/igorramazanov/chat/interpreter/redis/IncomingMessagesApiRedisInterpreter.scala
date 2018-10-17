@@ -2,14 +2,13 @@ package io.github.igorramazanov.chat.interpreter.redis
 
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy, QueueOfferResult}
+import io.github.igorramazanov.chat.Utils._
 import io.github.igorramazanov.chat.api._
 import io.github.igorramazanov.chat.domain.ChatMessage._
-import io.github.igorramazanov.chat.domain.ChatMessageJsonSupport._
-import io.github.igorramazanov.chat.Utils._
+import io.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
 import scredis._
-import spray.json._
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
@@ -18,34 +17,40 @@ class IncomingMessagesApiRedisInterpreter private (
     subscriberClient: () => SubscriberClient)(
     implicit
     actorMaterializer: ActorMaterializer,
-    ec: ExecutionContext)
-    extends IncomingMessagesApi {
+    ec: ExecutionContext,
+    jsonSupport: DomainEntitiesJsonSupport
+) extends IncomingMessagesApi {
   private val bufferSize = 100
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   override def subscribe(id: String): Publisher[GeneralChatMessage] = {
+    import jsonSupport._
+    import DomainEntitiesJsonSupport._
     val (queue, source) = Source
       .queue[GeneralChatMessage](bufferSize, OverflowStrategy.backpressure)
       .preMaterialize()
     val subscription: Subscription = {
       case message: PubSubMessage.Message =>
-        val generalChatMessage = message
+        val json = message
           .readAs[String]
-          .parseJson
-          .convertTo[GeneralChatMessage]
+        json.toGeneralMessage match {
+          case Left(error) =>
+            logger.error(
+              s"Couldn't parse json to GeneralChatMessage, json: $json, reason: $error")
+          case Right(generalChatMessage) =>
+            logger.debug(s"Received message to user '$id': $json")
 
-        logger.debug(
-          s"Received message to user '$id': ${generalChatMessage.toJson.compactPrint}")
-
-        queue.offer(generalChatMessage).onComplete {
-          case Success(
-              QueueOfferResult.Dropped | QueueOfferResult.QueueClosed) =>
-            logger.warn(s"Message to user '$id' was dropped")
-          case Failure(ex) =>
-            logger.error(s"Couldn't send message to source queue of user '$id'",
-                         ex)
-          case _ =>
+            queue.offer(generalChatMessage).onComplete {
+              case Success(
+                  QueueOfferResult.Dropped | QueueOfferResult.QueueClosed) =>
+                logger.warn(s"Message to user '$id' was dropped")
+              case Failure(ex) =>
+                logger.error(
+                  s"Couldn't send message to source queue of user '$id'",
+                  ex)
+              case _ =>
+            }
         }
 
       case _ => ()
@@ -60,7 +65,10 @@ object IncomingMessagesApiRedisInterpreter {
   def apply(subscriberClient: () => SubscriberClient)(
       implicit
       actorMaterializer: ActorMaterializer,
-      ec: ExecutionContext): IncomingMessagesApiRedisInterpreter =
+      ec: ExecutionContext,
+      jsonSupport: DomainEntitiesJsonSupport)
+    : IncomingMessagesApiRedisInterpreter =
     new IncomingMessagesApiRedisInterpreter(subscriberClient)(actorMaterializer,
-                                                              ec)
+                                                              ec,
+                                                              jsonSupport)
 }

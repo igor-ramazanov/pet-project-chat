@@ -2,13 +2,13 @@ package io.github.igorramazanov.chat
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
+import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
+import akka.http.scaladsl.unmarshalling.{FromRequestUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.stream.{ActorMaterializer, Materializer}
 import cats.effect.Effect
 import eu.timepit.refined.types.string.NonEmptyString
 import io.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
@@ -16,25 +16,23 @@ import io.github.igorramazanov.chat.Utils.{AnyOps, ExecuteToFuture}
 import io.github.igorramazanov.chat.api.UserApiToKvStoreApiInterpreter._
 import io.github.igorramazanov.chat.api.{
   IncomingMessagesApi,
-  OutgoingMesssagesApi,
+  OutgoingMessagesApi,
   PersistenceMessagesApi,
   UserApi
 }
-import io.github.igorramazanov.chat.domain.ChatMessage.{
-  GeneralChatMessage,
-  IncomingChatMessage
-}
-import io.github.igorramazanov.chat.domain.ChatMessageJsonSupport._
+import io.github.igorramazanov.chat.domain.ChatMessage.GeneralChatMessage
 import io.github.igorramazanov.chat.domain.User
-import io.github.igorramazanov.chat.domain.UserJsonSupport._
 import io.github.igorramazanov.chat.interpreter.redis.RedisInterpreters
+import io.github.igorramazanov.chat.json.{
+  DomainEntitiesJsonSupport,
+  DomainEntitiesSprayJsonSupport
+}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.slf4j.LoggerFactory
-import spray.json._
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object Bootloader {
@@ -54,6 +52,8 @@ object Bootloader {
       new ExecuteToFuture[Task] {
         override def unsafeToFuture[A](f: Task[A]): Future[A] = f.runAsync
       }
+    implicit val jsonSupport: DomainEntitiesSprayJsonSupport.type =
+      DomainEntitiesSprayJsonSupport
 
     import RedisInterpreters.redis
     val interpreters = InterpretersInstances[Task]
@@ -74,44 +74,72 @@ object Bootloader {
 
   def constructRoutes[F[_]: ExecuteToFuture: Effect](
       implicit materializer: ActorMaterializer,
+      jsonSupport: DomainEntitiesJsonSupport,
       UserApi: UserApi[F],
       IncomingApi: IncomingMessagesApi,
-      OutgoingApi: OutgoingMesssagesApi[F],
+      OutgoingApi: OutgoingMessagesApi[F],
       PersistenceApi: PersistenceMessagesApi[F]
   ): Route = {
-    path("signin") {
-      parameters(("id", "password")) { (idRaw, passwordRaw) =>
-        (for {
-          id <- NonEmptyString.from(idRaw)
-          password <- NonEmptyString.from(passwordRaw)
-        } yield {
-          logger.debug(s"Sign in request start, id: '$id'")
-          onComplete(UserApi.find(id.value, password.value).unsafeToFuture) {
-            case Success(Some(user)) =>
-              logger.debug(s"Sign in request success, id: '$id'")
-              onComplete(createWebSocketFlow(user).unsafeToFuture) {
-                case Success(flow) =>
-                  handleWebSocketMessages(flow)
+    import DomainEntitiesJsonSupport._
+    import jsonSupport._
+    implicit val userFromRequestUnmarshaller: Unmarshaller[HttpRequest, User] =
+      new FromRequestUnmarshaller[User] {
+        override def apply(value: HttpRequest)(
+            implicit ec: ExecutionContext,
+            materializer: Materializer): Future[User] =
+          value.entity
+            .toStrict(messageStrictTimeout)
+            .flatMap { entity =>
+              entity.data.utf8String.toUser match {
+                case Left(error) =>
+                  Future.failed(new RuntimeException(
+                    s"Couldn't unmarshall HttpRequest entity to User, entity: $entity, reason: $error"))
+                case Right(user) => Future.successful(user)
+              }
+            }
+
+      }
+
+    pathSingleSlash {
+      get {
+        getFromResource("pet-project-chat-frontend-fastopt.js")
+      }
+    } ~
+      path("signin") {
+        get {
+          parameters(("id", "password")) { (idRaw, passwordRaw) =>
+            (for {
+              id <- NonEmptyString.from(idRaw)
+              password <- NonEmptyString.from(passwordRaw)
+            } yield {
+              logger.debug(s"Sign in request start, id: '$id'")
+              onComplete(UserApi.find(id.value, password.value).unsafeToFuture) {
+                case Success(Some(user)) =>
+                  logger.debug(s"Sign in request success, id: '$id'")
+                  onComplete(createWebSocketFlow(user).unsafeToFuture) {
+                    case Success(flow) =>
+                      handleWebSocketMessages(flow)
+                    case Failure(ex) =>
+                      logger.error(
+                        s"Couldn't create WebSocket flow for user '${user.id}'",
+                        ex)
+                      complete(StatusCodes.InternalServerError)
+                  }
+                case Success(None) =>
+                  logger.debug(s"Sign in request forbidden, id: '$id'")
+                  complete(StatusCodes.Forbidden)
                 case Failure(ex) =>
                   logger.error(
-                    s"Couldn't create WebSocket flow for user '${user.id}'",
+                    s"Couldn't check user credentials. Id - $id, error message: ${ex.getMessage}",
                     ex)
                   complete(StatusCodes.InternalServerError)
               }
-            case Success(None) =>
-              logger.debug(s"Sign in request forbidden, id: '$id'")
-              complete(StatusCodes.Forbidden)
-            case Failure(ex) =>
-              logger.error(
-                s"Couldn't check user credentials. Id - $id, error message: ${ex.getMessage}",
-                ex)
-              complete(StatusCodes.InternalServerError)
+            }).getOrElse {
+              complete(StatusCodes.BadRequest)
+            }
           }
-        }).getOrElse {
-          complete(StatusCodes.BadRequest)
         }
-      }
-    } ~ path("signup") {
+      } ~ path("signup") {
       post {
         entity(as[User]) { user =>
           (for {
@@ -146,19 +174,23 @@ object Bootloader {
   def createWebSocketFlow[F[_]: Effect: ExecuteToFuture](
       user: User
   )(implicit materializer: ActorMaterializer,
+    jsonSupport: DomainEntitiesJsonSupport,
     IncomingApi: IncomingMessagesApi,
-    OutgoingApi: OutgoingMesssagesApi[F],
+    OutgoingApi: OutgoingMessagesApi[F],
     PersistenceApi: PersistenceMessagesApi[F])
     : F[Flow[Message, Message, NotUsed]] = {
+    import DomainEntitiesJsonSupport._
+    import jsonSupport._
+
     val source = Effect[F].map(PersistenceApi.ofUserOrdered(user.id)) {
       messages =>
         val sourcePersistent =
-          Source(messages).map(m => TextMessage(m.toJson.compactPrint))
+          Source(messages).map(m => TextMessage(m.toJson))
         val sourceFlow = Source
           .fromPublisher(
             IncomingApi
               .subscribe(user.id))
-          .map(m => TextMessage(m.toJson.compactPrint))
+          .map(m => TextMessage(m.toJson))
         sourcePersistent
           .concat(sourceFlow)
           .map { m =>
@@ -184,9 +216,14 @@ object Bootloader {
       }
       .mapAsync(Runtime.getRuntime.availableProcessors())(
         _.asTextMessage.asScala.toStrict(messageStrictTimeout))
-      .map(_.text.parseJson
-        .convertTo[IncomingChatMessage]
-        .asGeneral(user))
+      .mapConcat { webSocketMessage =>
+        val jsonString = webSocketMessage.text
+        jsonString.toIncomingMessage.fold({ error =>
+          logger.warn(
+            s"Couldn't parse incoming websocket message: $jsonString to IncomingChatMessage, reason: $error")
+          Nil
+        }, m => List(m.asGeneral(user)))
+      }
       .to(Sink.foreach[GeneralChatMessage] { m =>
         saveAndPublish(m).unsafeToFuture.discard()
       })

@@ -75,6 +75,7 @@ val sharedSettings = Seq(
 
 val jvmSettings = Seq(
   name := "pet-project-chat-backend",
+  mainClass := Some("io.github.igorramazanov.chat.Bootloader"),
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % "10.1.5",
     "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5" % "compile,it,test",
@@ -120,5 +121,8 @@ lazy val app = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings(jvmSettings: _*)
   .jsSettings(jsSettings: _*)
 
-lazy val appJvm = app.jvm.configs(IntegrationTest).enablePlugins(JavaServerAppPackaging, AshScriptPlugin, DockerPlugin)
 lazy val appJs = app.js
+lazy val appJvm = app.jvm
+  .configs(IntegrationTest)
+  .enablePlugins(JavaServerAppPackaging, AshScriptPlugin, DockerPlugin)
+  .settings(Compile / resources += (appJs / Compile / fastOptJS).value.data)

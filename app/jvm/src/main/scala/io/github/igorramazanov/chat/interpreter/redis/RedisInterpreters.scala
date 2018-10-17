@@ -6,9 +6,10 @@ import io.github.igorramazanov.chat.InterpretersInstances
 import io.github.igorramazanov.chat.api.{
   IncomingMessagesApi,
   KvStoreApi,
-  OutgoingMesssagesApi,
+  OutgoingMessagesApi,
   PersistenceMessagesApi
 }
+import io.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import scredis.{Redis, SubscriberClient}
 
 import scala.concurrent.ExecutionContext
@@ -19,7 +20,8 @@ object RedisInterpreters {
       host: String,
       actorSystem: ActorSystem,
       actorMaterializer: ActorMaterializer,
-      ec: ExecutionContext
+      ec: ExecutionContext,
+      jsonSupport: DomainEntitiesJsonSupport
   ): InterpretersInstances[F] = {
     val redis = Redis.withActorSystem(host = host)
     val subscriberClient = () => SubscriberClient(host = host)
@@ -27,7 +29,7 @@ object RedisInterpreters {
     new InterpretersInstances[F] {
       val kvStoreApi: KvStoreApi[String, String, F] =
         KvStoreApiRedisInterpreter[F](redis)
-      val outgoingApi: OutgoingMesssagesApi[F] =
+      val outgoingApi: OutgoingMessagesApi[F] =
         OutgoingMessagesApiRedisInterpreter[F](redis)
       val incomingApi: IncomingMessagesApi =
         IncomingMessagesApiRedisInterpreter(subscriberClient)
