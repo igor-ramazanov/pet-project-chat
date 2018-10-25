@@ -1,9 +1,5 @@
-import sbt.addCompilerPlugin
-import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
-
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 lazy val cleanDockerImages = taskKey[Unit]("Cleans docker images with tag:none")
-
-val versionOfScala = "2.12.7"
 
 val compilerOptions = Seq(
   // format: off
@@ -55,32 +51,32 @@ val compilerOptions = Seq(
   // format: on
 )
 
-lazy val root = project in file(".")
+scalaVersion in ThisBuild := "2.12.7"
+
+lazy val root = project.in(file("."))
 
 val sharedSettings = Seq(
-  scalaVersion := "2.12.7",
   organization := "io.github.igorramazanov",
   libraryDependencies ++= Seq(
-    "io.monix" %%% "monix-eval" % "3.0.0-RC1",
-    "com.github.mpilquist" %%% "simulacrum" % "0.13.0",
-    "eu.timepit" %%% "refined" % "0.9.2",
-    "eu.timepit" %%% "refined-cats" % "0.9.2"
+//    "com.github.mpilquist" %%% "simulacrum" % "0.13.0"
   ),
   resolvers += Resolver.sonatypeRepo("releases"),
   wartremoverErrors ++= Warts.unsafe,
-  Compile / scalacOptions := ("-Xplugin:" + (baseDirectory.in(root).value / ("paradise_" + scalaVersion.value + "-2.1.1.jar")).absolutePath) +: compilerOptions,
-  autoCompilerPlugins := true,
-  addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8")
+  autoCompilerPlugins := true
 )
 
 val jvmSettings = Seq(
   name := "pet-project-chat-backend",
   mainClass := Some("io.github.igorramazanov.chat.Bootloader"),
   libraryDependencies ++= Seq(
+    "com.github.mpilquist" %% "simulacrum" % "0.13.0",
+    "io.monix" %% "monix" % "3.0.0-RC1",
+    "eu.timepit" %% "refined" % "0.9.2",
     "com.typesafe.akka" %% "akka-http" % "10.1.5",
     "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5" % "compile,it,test",
     ("com.github.scredis" %% "scredis" % "2.1.7")
-      .exclude("com.typesafe.akka", "akka-actor_2.12"),
+      .exclude("com.typesafe.akka", s"akka-actor_${scalaBinaryVersion.value}"),
+    "com.lihaoyi" %% "scalatags" % "0.6.7",
     "com.typesafe.akka" %% "akka-stream" % "2.5.12",
     "ch.qos.logback" % "logback-classic" % "1.2.3",
     "com.typesafe.akka" %% "akka-slf4j" % "2.5.12" % "compile,it,test",
@@ -89,7 +85,7 @@ val jvmSettings = Seq(
     "org.scalacheck" %% "scalacheck" % "1.14.0" % "it,test",
     "com.dimafeng" %% "testcontainers-scala" % "0.20.0" % "it,test"
   ),
-  packageName in Docker := "io.github.igorramazanov/chat",
+  (Docker / packageName) := "com.github.igorramazanov/chat",
   dockerUpdateLatest:= true,
   dockerExposedPorts := Seq(8080),
   dockerBaseImage := "openjdk:8-jre-alpine",
@@ -97,23 +93,32 @@ val jvmSettings = Seq(
     import scala.sys.process._
     ("docker images -q --filter dangling=true" #| "xargs docker rmi").!!
   },
-  Docker / publishLocal := {
+  (Docker / publishLocal) := {
     (Docker / publishLocal).value
     cleanDockerImages.value
   },
-  IntegrationTest / test := {
+  (IntegrationTest / test) := {
     (Docker / publishLocal).value
+    cleanDockerImages.value
     (IntegrationTest / test).value
   },
-  IntegrationTest/ scalacOptions --= Seq("-Xfatal-warnings", "-deprecation")
+  (IntegrationTest / scalacOptions) --= Seq("-Xfatal-warnings", "-deprecation"),
+  Compile / scalacOptions := ("-Xplugin:" + (baseDirectory.in(root).value / ("paradise_" + scalaVersion.value + "-2.1.1.jar")).absolutePath) +: compilerOptions
 ) ++ Defaults.itSettings
 
 val jsSettings = Seq(
   name := "pet-project-chat-frontend",
   libraryDependencies ++= Seq(
-    "com.github.japgolly.scalajs-react" %%% "core" % "1.3.1"
-  )
+    "com.github.japgolly.scalajs-react" %%% "core" % "1.3.1",
+    "com.github.japgolly.scalajs-react" %%% "extra" % "1.3.1"
+  ),
+  (Compile / npmDependencies) ++= Seq(
+    "react" -> "16.5.1",
+    "react-dom" -> "16.5.1"),
+  scalaJSUseMainModuleInitializer := true,
+  (Compile / scalacOptions) ++= compilerOptions.filterNot(Set("-Ywarn-unused:params", "-Ywarn-value-discard").apply)
 )
+
 
 lazy val app = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
@@ -121,8 +126,13 @@ lazy val app = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings(jvmSettings: _*)
   .jsSettings(jsSettings: _*)
 
-lazy val appJs = app.js
+lazy val appJs = app.js.enablePlugins(ScalaJSBundlerPlugin)
 lazy val appJvm = app.jvm
   .configs(IntegrationTest)
   .enablePlugins(JavaServerAppPackaging, AshScriptPlugin, DockerPlugin)
-  .settings(Compile / resources += (appJs / Compile / fastOptJS).value.data)
+  .settings((Compile / resources) ++= {
+    val js = (appJs / Compile / fastOptJS / webpack).value.map(_.data)
+//    val sourceMap = new File(js.getAbsolutePath + ".map")
+//    Seq(js, sourceMap)
+    js
+  })
