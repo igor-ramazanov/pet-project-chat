@@ -1,10 +1,10 @@
 package com.github.igorramazanov.chat
-import java.time.{LocalDateTime, ZoneId, ZoneOffset}
+import java.time._
 
 import cats.MonadError
 import cats.effect.{Async, Timer}
-import simulacrum.typeclass
 import cats.syntax.all._
+import simulacrum.typeclass
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -23,10 +23,6 @@ object Utils {
         T.sleep(1.second).flatMap(_ => retryMonadError(fa)(retries - 1))
       case e => M.raiseError(e)
     }
-
-  implicit class AnyOps(val `this`: Any) extends AnyVal {
-    @specialized def discard(): Unit = ()
-  }
 
   implicit class MonadErrorAndTimerOps[F[_], A](val `this`: F[A])
       extends AnyVal {

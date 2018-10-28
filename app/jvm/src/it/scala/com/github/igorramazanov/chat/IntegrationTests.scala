@@ -12,7 +12,10 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.testkit.TestKit
 import akka.{Done, NotUsed}
 import com.dimafeng.testcontainers._
-import com.github.igorramazanov.chat.Utils._
+import com.github.igorramazanov.chat.UtilsShared._
+import io.circe.Json
+import io.circe.parser._
+import io.circe.syntax._
 import org.scalacheck.Gen
 import org.scalatest.FunSuiteLike
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
@@ -22,7 +25,6 @@ import org.testcontainers.containers.wait.strategy.{
   WaitStrategy,
   WaitStrategyTarget
 }
-import spray.json._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -175,10 +177,11 @@ class IntegrationTests
         HttpRequest(
           method = HttpMethods.POST,
           uri = s"http://localhost:8080/signup",
-          entity =
-            HttpEntity(MediaTypes.`application/json`,
-                       JsObject("id" -> JsString(id),
-                                "password" -> JsString(password)).compactPrint)
+          entity = HttpEntity(MediaTypes.`application/json`,
+                              Json
+                                .obj("id" -> Json.fromString(id),
+                                     "password" -> Json.fromString(password))
+                                .noSpaces)
         ))
       .map(_.status)
     Await.result(f, 5.seconds)
@@ -194,16 +197,21 @@ class IntegrationTests
           .mapAsync(1)(m => m.asTextMessage.asScala.toStrict(5.seconds))
           .toMat(Sink.seq)(Keep.right),
         Source(messages).map(TextMessage.apply))(Keep.left))
-    (status,
-     Await.result(f.map(
-                    _.map(
-                      _.text.parseJson.asJsObject
-                        .fields("payload")
-                        .asInstanceOf[JsString]
-                        .value)),
-                  5.seconds))
+
+    val rawMessages = f.map(_.map(_.text))
+    val extractedPayloads = rawMessages.map(msgs =>
+      msgs.map { msg =>
+        parse(msg).toOption
+          .flatMap(_.hcursor.downField("payload").as[String].toOption)
+          .getOrElse("")
+    })
+
+    (status, Await.result(extractedPayloads, 5.seconds))
   }
 
   def createMessage(to: String, payload: String): String =
-    JsObject("to" -> JsString(to), "payload" -> JsString(payload)).compactPrint
+    Map(
+      "to" -> to,
+      "payload" -> payload
+    ).asJson.noSpaces
 }

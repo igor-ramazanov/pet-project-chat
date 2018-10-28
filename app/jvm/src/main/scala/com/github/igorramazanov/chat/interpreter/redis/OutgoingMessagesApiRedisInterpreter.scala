@@ -3,6 +3,7 @@ package com.github.igorramazanov.chat.interpreter.redis
 import cats.effect.{Async, Timer}
 import cats.syntax.all._
 import com.github.igorramazanov.chat.Utils._
+import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.api.OutgoingMessagesApi
 import com.github.igorramazanov.chat.domain.ChatMessage.GeneralChatMessage
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport

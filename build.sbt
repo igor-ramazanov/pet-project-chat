@@ -51,16 +51,18 @@ val compilerOptions = Seq(
   // format: on
 )
 
-scalaVersion in ThisBuild := "2.12.7"
+scalaVersion in ThisBuild := "2.12.6"
 
 lazy val root = project.in(file("."))
 
 val sharedSettings = Seq(
   organization := "io.github.igorramazanov",
   libraryDependencies ++= Seq(
-//    "com.github.mpilquist" %%% "simulacrum" % "0.13.0"
+//    "io.circe" %%% "circe-core" % "0.10.0",
+//    "io.circe" %%% "circe-parser" % "0.10.0",
+//    "io.circe" %%% "circe-generic" % "0.10.0"
   ),
-  resolvers += Resolver.sonatypeRepo("releases"),
+  resolvers ++= Seq(Resolver.sonatypeRepo("releases")),
   wartremoverErrors ++= Warts.unsafe,
   autoCompilerPlugins := true
 )
@@ -69,14 +71,13 @@ val jvmSettings = Seq(
   name := "pet-project-chat-backend",
   mainClass := Some("io.github.igorramazanov.chat.Bootloader"),
   libraryDependencies ++= Seq(
-    "com.github.mpilquist" %% "simulacrum" % "0.13.0",
+    "com.github.mpilquist" %% "simulacrum" % "0.14.0",
     "io.monix" %% "monix" % "3.0.0-RC1",
     "eu.timepit" %% "refined" % "0.9.2",
     "com.typesafe.akka" %% "akka-http" % "10.1.5",
     "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5" % "compile,it,test",
     ("com.github.scredis" %% "scredis" % "2.1.7")
       .exclude("com.typesafe.akka", s"akka-actor_${scalaBinaryVersion.value}"),
-    "com.lihaoyi" %% "scalatags" % "0.6.7",
     "com.typesafe.akka" %% "akka-stream" % "2.5.12",
     "ch.qos.logback" % "logback-classic" % "1.2.3",
     "com.typesafe.akka" %% "akka-slf4j" % "2.5.12" % "compile,it,test",
@@ -112,9 +113,24 @@ val jsSettings = Seq(
     "com.github.japgolly.scalajs-react" %%% "core" % "1.3.1",
     "com.github.japgolly.scalajs-react" %%% "extra" % "1.3.1"
   ),
-  (Compile / npmDependencies) ++= Seq(
-    "react" -> "16.5.1",
-    "react-dom" -> "16.5.1"),
+  jsDependencies ++= Seq(
+    "org.webjars.npm" % "react" % "16.5.1"
+      /        "umd/react.development.js"
+      minified "umd/react.production.min.js"
+      commonJSName "React",
+
+    "org.webjars.npm" % "react-dom" % "16.5.1"
+      /         "umd/react-dom.development.js"
+      minified  "umd/react-dom.production.min.js"
+      dependsOn "umd/react.development.js"
+      commonJSName "ReactDOM",
+
+    "org.webjars.npm" % "react-dom" % "16.5.1"
+      /         "umd/react-dom-server.browser.development.js"
+      minified  "umd/react-dom-server.browser.production.min.js"
+      dependsOn "umd/react-dom.development.js"
+  ),
+  dependencyOverrides += "org.webjars.npm" % "js-tokens" % "3.0.2",
   scalaJSUseMainModuleInitializer := true,
   (Compile / scalacOptions) ++= compilerOptions.filterNot(Set("-Ywarn-unused:params", "-Ywarn-value-discard").apply)
 )
@@ -126,13 +142,16 @@ lazy val app = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings(jvmSettings: _*)
   .jsSettings(jsSettings: _*)
 
-lazy val appJs = app.js.enablePlugins(ScalaJSBundlerPlugin)
+lazy val appJs = app.js
 lazy val appJvm = app.jvm
   .configs(IntegrationTest)
   .enablePlugins(JavaServerAppPackaging, AshScriptPlugin, DockerPlugin)
   .settings((Compile / resources) ++= {
-    val js = (appJs / Compile / fastOptJS / webpack).value.map(_.data)
-//    val sourceMap = new File(js.getAbsolutePath + ".map")
-//    Seq(js, sourceMap)
-    js
+    val js = (appJs / Compile / fastOptJS).value
+    val sourceMap = new File(js.data.absolutePath + ".map")
+    val jsDeps = new File(js.data.getParentFile.absolutePath + "/pet-project-chat-frontend-jsdeps.js")
+    Seq(
+      js.data,
+      sourceMap,
+      jsDeps)
   })

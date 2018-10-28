@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory
 import scredis._
 
 import scala.concurrent.ExecutionContext
+import com.github.igorramazanov.chat.UtilsShared._
 
 class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer] private (
     redis: Redis)(implicit ec: ExecutionContext,

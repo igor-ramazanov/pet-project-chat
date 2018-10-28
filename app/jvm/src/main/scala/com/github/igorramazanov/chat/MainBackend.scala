@@ -11,22 +11,24 @@ import akka.http.scaladsl.unmarshalling.{FromRequestUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorMaterializer, Materializer}
 import cats.effect.Effect
-import com.github.igorramazanov.chat.api.PersistenceMessagesApi
-import com.github.igorramazanov.chat.domain.User
-import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
-import eu.timepit.refined.types.string.NonEmptyString
+import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
-import com.github.igorramazanov.chat.Utils._
-import com.github.igorramazanov.chat.Utils.{AnyOps, ExecuteToFuture}
+import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.api.UserApiToKvStoreApiInterpreter._
 import com.github.igorramazanov.chat.api.{
   IncomingMessagesApi,
   OutgoingMessagesApi,
+  PersistenceMessagesApi,
   UserApi
 }
 import com.github.igorramazanov.chat.domain.ChatMessage.GeneralChatMessage
+import com.github.igorramazanov.chat.domain.User
 import com.github.igorramazanov.chat.interpreter.redis.RedisInterpreters
-import com.github.igorramazanov.chat.json.DomainEntitiesSprayJsonSupport
+import com.github.igorramazanov.chat.json.{
+  DomainEntitiesJsonSupport,
+  DomainEntitiesSprayJsonSupport
+}
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.slf4j.LoggerFactory
@@ -53,7 +55,7 @@ object MainBackend {
       new ExecuteToFuture[Task] {
         override def unsafeToFuture[A](f: Task[A]): Future[A] = f.runAsync
       }
-    implicit val jsonSupport: DomainEntitiesSprayJsonSupport.type =
+    implicit val jsonSupport: DomainEntitiesJsonSupport =
       DomainEntitiesSprayJsonSupport
 
     import RedisInterpreters.redis
@@ -100,9 +102,10 @@ object MainBackend {
             }
       }
     get {
-      getFromResourceDirectory("") ~ pathSingleSlash {
-        getFromResource("index.html")
-      }
+      getFromResourceDirectory("") ~
+        pathSingleSlash {
+          getFromResource("index.html")
+        }
     } ~
       path("signin") {
         get {
@@ -223,7 +226,7 @@ object MainBackend {
               s"Couldn't parse incoming websocket message: $jsonString to IncomingChatMessage, reason: $error")
             Nil
           },
-          m => List(m.asGeneral(user, currentUtcUnixEpochMillis))
+          m => List(m.asGeneral(user, Utils.currentUtcUnixEpochMillis))
         )
       }
       .to(Sink.foreach[GeneralChatMessage] { m =>

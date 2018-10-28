@@ -6,7 +6,7 @@ import com.github.igorramazanov.chat.api.IncomingMessagesApi
 import com.github.igorramazanov.chat.domain.ChatMessage.GeneralChatMessage
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 
-import com.github.igorramazanov.chat.Utils._
+import com.github.igorramazanov.chat.UtilsShared._
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
 import scredis._
