@@ -3,6 +3,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{
   BackendScope,
   Callback,
+  CallbackTo,
   ReactEventFromInput,
   ScalaComponent
 }
@@ -11,38 +12,63 @@ import japgolly.scalajs.react.{
 object WelcomeComponent {
 
   final case class Props(signIn: (String, String) => Callback,
-                         signUp: (String, String) => Callback)
+                         signUp: (String, String) => Callback,
+                         isInFlight: Boolean)
 
   final case class State(username: String,
                          password: String,
-                         isFirstTime: Boolean)
+                         isFirstTime: Boolean) {
+    def isEmpty: Boolean = username.isEmpty || password.isEmpty
+  }
 
   object State {
     def init: State = State("", "", isFirstTime = true)
   }
 
   final class Backend($ : BackendScope[Props, State]) {
-    private def validate(onSuccess: (String, String) => Callback): Callback =
-      (for {
-        s <- $.state
-      } yield {
-        if (s.username.isEmpty || s.password.isEmpty) {
-          $.modState(_.copy(isFirstTime = false))
+    private def validate: CallbackTo[Unit] =
+      $.modState { s =>
+        if (s.isEmpty) {
+          s.copy(isFirstTime = false)
         } else {
-          onSuccess(s.username, s.password)
+          s
         }
-      }).flatten
+      }
 
-    private def signIn: Callback = $.props.flatMap(p => validate(p.signIn))
+    private def signIn: CallbackTo[Unit] =
+      for {
+        p <- $.props
+        s <- $.state
+        _ <- validate
+        _ <- if (!s.isEmpty) p.signIn(s.username, s.password)
+        else Callback.empty
+      } yield ()
 
-    private def signUp: Callback = $.props.flatMap(p => validate(p.signUp))
+    private def signUp: CallbackTo[Unit] =
+      for {
+        p <- $.props
+        s <- $.state
+        _ <- validate
+        _ <- if (!s.isEmpty) p.signUp(s.username, s.password)
+        else Callback.empty
+      } yield ()
 
-    def inputClass(isFirstTime: Boolean, str: String): String =
+    private def inputClass(isFirstTime: Boolean, str: String) =
       if (!isFirstTime && str.isEmpty) "form-control is-invalid"
       else "form-control"
 
-    def render(s: State): VdomElement = {
+    private def button(isInFlight: Boolean, text: String, c: Callback) = {
+      if (isInFlight) {
+        <.button(^.disabled := true,
+                 ^.className := "btn btn-primary",
+                 ^.onClick --> c,
+                 text)
+      } else {
+        <.button(^.className := "btn btn-primary", ^.onClick --> c, text)
+      }
+    }
 
+    def render(p: Props, s: State): VdomElement = {
       <.div(
         ^.className := "container",
         <.div(
@@ -79,13 +105,9 @@ object WelcomeComponent {
               ^.className := "container",
               <.div(
                 ^.className := "row justify-content-center",
-                <.button(^.className := "col-sm btn btn-primary",
-                         ^.onClick --> signIn,
-                         "Sign in"),
+                button(p.isInFlight, "Sign In", signIn),
                 <.div(^.className := "col-sm"),
-                <.button(^.className := "col-sm btn btn-primary",
-                         ^.onClick --> signUp,
-                         "Sign up")
+                button(p.isInFlight, "Sign Up", signUp),
               )
             )
           )

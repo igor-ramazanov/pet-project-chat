@@ -24,13 +24,16 @@ class OutgoingMessagesApiRedisInterpreter[F[_]: Async: Timer] private (
     logger.debug(
       s"Sending message from '${generalChatMessage.from}' to '${generalChatMessage.to}'")
 
-    liftFromFuture(
-      redis.publish(generalChatMessage.to, generalChatMessage.toJson),
-      logger.error(
-        s"Couldn't publish message from user '${generalChatMessage.from}' to '${generalChatMessage.to}'",
-        _)
-    ).map(_.discard())
+    def sendMessage(to: String) =
+      liftFromFuture(
+        redis.publish(to, generalChatMessage.toJson),
+        logger.error(
+          s"Couldn't publish message from user '${generalChatMessage.from}' to '${generalChatMessage.to}'",
+          _)
+      ).map(_.discard())
 
+    sendMessage(generalChatMessage.to).flatMap(_ =>
+      sendMessage(generalChatMessage.from))
   }
 }
 

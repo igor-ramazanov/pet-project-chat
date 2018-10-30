@@ -47,7 +47,7 @@ class IncomingMessagesApiRedisInterpreter private (
                   QueueOfferResult.Dropped | QueueOfferResult.QueueClosed) =>
                 logger.warn(s"Message to user '$id' was dropped")
               case Failure(ex) =>
-                logger.error(
+                logger.warn(
                   s"Couldn't send message to source queue of user '$id'",
                   ex)
               case _ =>

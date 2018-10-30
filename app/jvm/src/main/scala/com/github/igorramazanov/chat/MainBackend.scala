@@ -77,6 +77,7 @@ object MainBackend {
 
   def constructRoutes[F[_]: ExecuteToFuture: Effect](
       implicit materializer: ActorMaterializer,
+      scheduler: Scheduler,
       jsonSupport: DomainEntitiesJsonSupport,
       UserApi: UserApi[F],
       IncomingApi: IncomingMessagesApi,

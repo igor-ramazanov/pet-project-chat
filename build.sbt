@@ -52,6 +52,7 @@ val compilerOptions = Seq(
 )
 
 scalaVersion in ThisBuild := "2.12.6"
+version in ThisBuild := "1.0"
 
 lazy val root = project.in(file("."))
 
@@ -104,7 +105,8 @@ val jvmSettings = Seq(
     (IntegrationTest / test).value
   },
   (IntegrationTest / scalacOptions) --= Seq("-Xfatal-warnings", "-deprecation"),
-  Compile / scalacOptions := ("-Xplugin:" + (baseDirectory.in(root).value / ("paradise_" + scalaVersion.value + "-2.1.1.jar")).absolutePath) +: compilerOptions
+  Compile / scalacOptions := ("-Xplugin:" + (baseDirectory.in(root).value / ("paradise_" + scalaVersion.value + "-2.1.1.jar")).absolutePath) +: compilerOptions,
+  (Compile / console / scalacOptions) --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings")
 ) ++ Defaults.itSettings
 
 val jsSettings = Seq(
@@ -132,7 +134,8 @@ val jsSettings = Seq(
   ),
   dependencyOverrides += "org.webjars.npm" % "js-tokens" % "3.0.2",
   scalaJSUseMainModuleInitializer := true,
-  (Compile / scalacOptions) ++= compilerOptions.filterNot(Set("-Ywarn-unused:params", "-Ywarn-value-discard").apply)
+  (Compile / scalacOptions) ++= compilerOptions.filterNot(Set("-Ywarn-unused:params", "-Ywarn-value-discard").apply),
+  (Compile / console / scalacOptions) --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings")
 )
 
 
