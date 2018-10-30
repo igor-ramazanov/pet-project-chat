@@ -11,7 +11,7 @@ Technologies used:
 2. [Cats Effect](https://typelevel.org/cats-effect/) - for abstracting over concrete IO monad
 3. [Monix](https://monix.io) - concrete implementation of IO monad
 4. [Redis](https://redis.io) - storage and pub-sub mechanism
-5. [ScalaJS](http://scala-js.org/) and [ScalaJS bindings for ReactJS](https://github.com/japgolly/scalajs-react) - for web client, **web client is not ready yet**
+5. [ScalaJS](http://scala-js.org/), [ScalaJS bindings for ReactJS](https://github.com/japgolly/scalajs-react) and [Bootstrap 4](https://getbootstrap.com) - for web client, **web client is ready in terms of functionality, but not in terms of UI/UX**
 6. [OpenAPI](https://swagger.io) - API documentation
 7. [ScalaTest](http://www.scalatest.org) with [ScalaCheck](https://www.scalacheck.org) - for integration property-based tests
 
@@ -34,4 +34,6 @@ The `com.github.igorramazanov/chat` Docker image:
 At the current moment, WebSockets API is not documented yet, but you may check the [integration tests whichs shows how to interact with the Docker image](/app/jvm/src/it/scala/com/github/igorramazanov/chat/IntegrationTests.scala)
 
 ## Web Interface
-Is not ready yet.
+[http://localhost:8080/](http://localhost:8080/)
+
+![Web UI](/webui.png)
