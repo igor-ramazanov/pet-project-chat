@@ -38,8 +38,8 @@ object ChatComponent {
           ^.className := "row",
           <.div(
             ^.className := "col-md-3",
-            UsersComponent.Component(
-              UsersComponent
+            ContactsComponent.Component(
+              ContactsComponent
                 .Props(p.user,
                        p.messages.keys.toSet,
                        u => $.modState(_.copy(active = Some(u))),

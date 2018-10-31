@@ -7,10 +7,18 @@ import japgolly.scalajs.react.{
   ReactEventFromInput,
   ScalaComponent
 }
+import scalacss.DevDefaults._
+import scalacss.ScalaCssReact._
 
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
 object WelcomeComponent {
-
+  object Styles extends StyleSheet.Inline {
+    import dsl._
+    val welcome = style(
+      height(100.vh),
+      flexDirection.column
+    )
+  }
   final case class Props(signIn: (String, String) => Callback,
                          signUp: (String, String) => Callback,
                          isInFlight: Boolean)
@@ -74,7 +82,8 @@ object WelcomeComponent {
         <.div(
           ^.className := "row align-items-center",
           <.div(
-            ^.className := "col-10 col-md-6 offset-md-3 d-flex justify-content-center welcome",
+            ^.className := "col-10 col-md-6 offset-md-3 d-flex justify-content-center",
+            Styles.welcome,
             <.div(
               <.input(
                 ^.`type` := "text",

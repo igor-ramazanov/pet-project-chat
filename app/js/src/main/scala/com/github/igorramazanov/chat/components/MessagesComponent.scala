@@ -6,10 +6,36 @@ import japgolly.scalajs.react._
 import japgolly.scalajs.react.vdom.html_<^._
 import scala.concurrent.duration._
 import scala.scalajs.js.Date
-
+import scalacss.DevDefaults._
+import scalacss.ScalaCssReact._
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
 object MessagesComponent {
+  object Styles extends StyleSheet.Inline {
+    import dsl._
+    val messageMe = style(
+      alignSelf.flexEnd
+    )
+    val messageFriend = style(
+      alignSelf.flexStart
+    )
+    val message = style(
+      marginBottom(5.px),
+      borderRadius(10.px).important,
+      width(60.%%)
+    )
 
+    val messagesScroll = style(
+      height :=! "calc(100vh - 65px)",
+      maxHeight(100.vh),
+      overflowX.hidden,
+      overflowY.scroll,
+      borderRadius(0.px)
+    )
+
+    val time = style(
+      fontSize(14.px)
+    )
+  }
   final case class Props(user: Option[User], messages: List[GeneralChatMessage])
 
   final class Backend($ : BackendScope[Props, Unit]) {
@@ -37,16 +63,17 @@ object MessagesComponent {
         val time = timeString + (if (isOlderThan1Day(m.dateTimeUtcEpochSeconds))
                                    " " + dateString
                                  else "")
-        val from = if (user.id == m.from) "-me" else "-friend"
         <.div(
-          ^.className := s"list-group-item message message$from",
-//          <.b(m.from + ": "),
+          ^.className := s"list-group-item",
+          Styles.message,
+          if (user.id == m.from) Styles.messageMe else Styles.messageFriend,
           <.p(p, ^.className := "mb-2"),
-          <.div(^.className := "d-flex justify-content-end", <.i(time))
+          <.div(^.className := "d-flex justify-content-end",
+                <.i(Styles.time, time))
         )
       }
 
-      val tagMods = (^.className := "list-group scroll-messages py-4") :: p.user.toList
+      val tagMods = (^.className := "list-group scroll-messages py-4") :: (Styles.messagesScroll: TagMod) :: p.user.toList
         .flatMap(u => p.messages.map(message(u)))
       <.div(tagMods: _*)
     }

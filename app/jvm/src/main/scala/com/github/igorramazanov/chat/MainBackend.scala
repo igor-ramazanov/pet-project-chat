@@ -22,7 +22,7 @@ import com.github.igorramazanov.chat.api.{
   UserApi
 }
 import com.github.igorramazanov.chat.domain.ChatMessage.GeneralChatMessage
-import com.github.igorramazanov.chat.domain.User
+import com.github.igorramazanov.chat.domain.{KeepAliveMessage, User}
 import com.github.igorramazanov.chat.interpreter.redis.RedisInterpreters
 import com.github.igorramazanov.chat.json.{
   DomainEntitiesJsonSupport,
@@ -42,6 +42,7 @@ object MainBackend {
   private lazy val logger = LoggerFactory.getLogger(this.getClass)
   private val messageStrictTimeout = 1.minute
   private val shutdownTimeout = 1.minute
+  private val keepAliveTimeout = 5.seconds
   private implicit val redisHost: String =
     sys.env.getOrElse("REDIS_HOST", "localhost")
   private val logLevel = sys.env.getOrElse("LOG_LEVEL", "INFO")
@@ -194,8 +195,11 @@ object MainBackend {
             IncomingApi
               .subscribe(user.id))
           .map(m => TextMessage(m.toJson))
+
         sourcePersistent
           .concat(sourceFlow)
+          .keepAlive(keepAliveTimeout,
+                     () => TextMessage(KeepAliveMessage.Pong.toString))
           .map { m =>
             logger.debug(s"Outgoing to user '${user.id}': $m")
             m
@@ -219,8 +223,9 @@ object MainBackend {
       }
       .mapAsync(Runtime.getRuntime.availableProcessors())(
         _.asTextMessage.asScala.toStrict(messageStrictTimeout))
-      .mapConcat { webSocketMessage =>
-        val jsonString = webSocketMessage.text
+      .map(_.text)
+      .filter(_ != "ping")
+      .mapConcat { jsonString =>
         jsonString.toIncomingMessage.fold(
           { error =>
             logger.warn(

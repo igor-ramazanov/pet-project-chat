@@ -4,9 +4,24 @@ import com.github.igorramazanov.chat.domain.User
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.ext.KeyCode
-
+import scalacss.DevDefaults._
+import scalacss.ScalaCssReact._
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
-object UsersComponent {
+object ContactsComponent {
+  object Styles extends StyleSheet.Inline {
+    import dsl._
+    val scroll = style(
+      height(100.vh),
+      maxHeight(100.vh),
+      overflowX.hidden,
+      overflowY.scroll
+    )
+
+    val contact = style(
+      lineHeight(1),
+      minHeight(40.px)
+    )
+  }
 
   final case class Props(user: Option[User],
                          contacts: Set[String],
@@ -50,10 +65,11 @@ object UsersComponent {
       def contact(u: String) = {
         val isActive = p.active.contains(u)
         val className =
-          s"contact list-group-item list-group-item-action${if (isActive) " active"
+          s"list-group-item list-group-item-action${if (isActive) " active"
           else ""}"
         <.button(
           ^.`type` := "button",
+          Styles.contact,
           ^.className := className,
           ^.onClick ==> { e: ReactEventFromHtml =>
             e.persist()
@@ -86,14 +102,14 @@ object UsersComponent {
         <.span(^.className := "list-group-item text-center font-weight-bold",
                "Contacts")
 
-      val tagMods = (^.className := "list-group scroll-contacts") :: header :: addNewContactInput :: contacts
+      val tagMods = (^.className := "list-group") :: (Styles.scroll: TagMod) :: header :: addNewContactInput :: contacts
 
       <.div(tagMods: _*)
     }
   }
 
   val Component = ScalaComponent
-    .builder[Props]("UsersComponent")
+    .builder[Props]("ContactsComponent")
     .initialState(State.init)
     .renderBackend[Backend]
     .build

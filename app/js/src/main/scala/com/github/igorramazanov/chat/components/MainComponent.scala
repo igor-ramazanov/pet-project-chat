@@ -3,7 +3,7 @@ import com.github.igorramazanov.chat.domain.ChatMessage.{
   GeneralChatMessage,
   IncomingChatMessage
 }
-import com.github.igorramazanov.chat.domain.User
+import com.github.igorramazanov.chat.domain.{KeepAliveMessage, User}
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{
@@ -13,13 +13,17 @@ import japgolly.scalajs.react.{
   ScalaComponent
 }
 import com.github.igorramazanov.chat.json._
+import com.github.igorramazanov.chat.UtilsShared._
 import org.scalajs.dom.{CloseEvent, Event, MessageEvent}
 import org.scalajs.dom.raw.WebSocket
 
 import scala.scalajs.js
+import scala.concurrent.duration._
 
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
 object MainComponent {
+  val InvalidCredentials = 1006
+
   sealed trait Page extends Product with Serializable
   object Page {
     final case object Welcoming extends Page
@@ -54,6 +58,12 @@ object MainComponent {
     import jsonSupport._
     import DomainEntitiesJsonSupport._
     private def signIn(username: String, password: String): Callback = {
+      def schedulePings(s: State): Unit =
+        js.timers
+          .setInterval(5.seconds)(
+            s.ws.foreach(_.send(KeepAliveMessage.Ping.toString)))
+          .discard()
+
       def connect = CallbackTo {
         val host =
           org.scalajs.dom.window.location.hostname
@@ -61,18 +71,27 @@ object MainComponent {
         val url = s"ws://$host:$port/signin?id=$username&password=$password"
         val direct = $.withEffectsImpure
 
-        def onopen(e: Event): Unit = {}
+        @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
+        def onopen(e: Event): Unit = {
+          direct.modState { s =>
+            schedulePings(s)
+            s.copy(user = Some(User(username, password)),
+                   currentPage = Page.Chat)
+          }
+        }
 
         def onmessage(e: MessageEvent): Unit = {
           val rawMessage = e.data.toString
-          val messageEither = rawMessage.toGeneralMessage
+          if (rawMessage != KeepAliveMessage.Pong.toString) {
+            val messageEither = rawMessage.toGeneralMessage
 
-          messageEither match {
-            case Left(error) =>
-              org.scalajs.dom.window.alert(
-                s"Couldn't parse message: $messageEither as GeneralChatMessage, reason: $error")
-            case Right(message) =>
-              direct.modState(_.appendMessage(username, message))
+            messageEither match {
+              case Left(error) =>
+                System.err.println(
+                  s"Couldn't parse message: $messageEither as GeneralChatMessage, reason: $error")
+              case Right(message) =>
+                direct.modState(_.appendMessage(username, message))
+            }
           }
         }
 
@@ -83,31 +102,31 @@ object MainComponent {
               .message
               .asInstanceOf[js.UndefOr[String]]
               .fold(s"Error occurred!")("Error occurred: " + _)
-          org.scalajs.dom.window.alert(msg)
+          System.err.println(msg)
         }
 
         def onclose(e: CloseEvent): Unit = {
-          org.scalajs.dom.window.alert(s"""Closed. Reason = "${e.reason}"""")
+          if (e.code == InvalidCredentials) {
+            System.err.println(s"""Invalid credentials.""")
+          } else {
+            System.err.println(
+              s"""Closed. Code: ${e.code}. Reason = "${e.reason}".""")
+            signIn(username, password).discard()
+          }
         }
 
         val ws = new WebSocket(url)
-        ws.onopen = onopen _
-        ws.onclose = onclose _
-        ws.onmessage = onmessage _
-        ws.onerror = onerror _
+        ws.onopen = onopen
+        ws.onclose = onclose
+        ws.onmessage = onmessage
+        ws.onerror = onerror
         ws
       }
 
-      val c = connect.attempt.flatMap {
-        case Right(ws) =>
-          $.modState(
-            _.copy(user = Some(User(username, password)),
-                   currentPage = Page.Chat,
-                   ws = Some(ws)))
-        case Left(error) =>
-          Callback.alert(s"Couldn't connect to the server: ${error.getMessage}")
+      connect.attempt >>= {
+        case Right(ws) => $.modState(_.copy(ws = Some(ws)))
+        case _         => Callback.empty
       }
-      c: Callback
     }
 
     private def signUp(username: String, password: String): Callback = {
@@ -121,8 +140,10 @@ object MainComponent {
               case 200 =>
                 signIn(username, password)
               case _ =>
-                Callback.alert(
-                  s"Sign up: failure, reason: ${Ajax.deriveErrorMessage(xhr)}")
+                Callback {
+                  System.err.println(
+                    s"Sign up: failure, reason: ${Ajax.deriveErrorMessage(xhr)}")
+                }
             })
           }
           .asCallback
