@@ -74,9 +74,8 @@ object WelcomeComponent {
         <.div(
           ^.className := "row align-items-center",
           <.div(
-            ^.className := "col",
+            ^.className := "col-10 col-md-6 offset-md-3 d-flex justify-content-center welcome",
             <.div(
-              ^.className := "form-group",
               <.input(
                 ^.`type` := "text",
                 ^.className := inputClass(s.isFirstTime, s.username),
@@ -89,7 +88,7 @@ object WelcomeComponent {
               )
             ),
             <.div(
-              ^.className := "form-group",
+              ^.className := "my-3",
               <.input(
                 ^.`type` := "password",
                 ^.className := inputClass(s.isFirstTime, s.password),
@@ -102,13 +101,9 @@ object WelcomeComponent {
               )
             ),
             <.div(
-              ^.className := "container",
-              <.div(
-                ^.className := "row justify-content-center",
-                button(p.isInFlight, "Sign In", signIn),
-                <.div(^.className := "col-sm"),
-                button(p.isInFlight, "Sign Up", signUp),
-              )
+              ^.className := "d-flex justify-content-between",
+              button(p.isInFlight, "Sign In", signIn),
+              button(p.isInFlight, "Sign Up", signUp)
             )
           )
         )

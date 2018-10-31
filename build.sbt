@@ -113,7 +113,8 @@ val jsSettings = Seq(
   name := "pet-project-chat-frontend",
   libraryDependencies ++= Seq(
     "com.github.japgolly.scalajs-react" %%% "core" % "1.3.1",
-    "com.github.japgolly.scalajs-react" %%% "extra" % "1.3.1"
+    "com.github.japgolly.scalajs-react" %%% "extra" % "1.3.1",
+    "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.3"
   ),
   jsDependencies ++= Seq(
     "org.webjars.npm" % "react" % "16.5.1"

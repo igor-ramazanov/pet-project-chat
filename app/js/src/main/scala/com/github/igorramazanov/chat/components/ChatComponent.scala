@@ -37,7 +37,7 @@ object ChatComponent {
         <.div(
           ^.className := "row",
           <.div(
-            ^.className := "col-3",
+            ^.className := "col-md-3",
             UsersComponent.Component(
               UsersComponent
                 .Props(p.user,
@@ -46,14 +46,15 @@ object ChatComponent {
                        p.addUser,
                        s.active))
           ),
-          <.div(^.className := "col-6",
-                MessagesComponent.Component(
-                  MessagesComponent.Props(p.user, discussionMessages))),
-          <.div(^.className := "col-3",
-                MessageSendingComponent.Component(
-                  MessageSendingComponent.Props(
-                    s.active.nonEmpty && p.user.nonEmpty,
-                    messageSendingComponentSend)))
+          <.div(
+            ^.className := "col-md-9",
+            MessagesComponent.Component(
+              MessagesComponent.Props(p.user, discussionMessages)),
+            MessageSendingComponent.Component(
+              MessageSendingComponent.Props(
+                s.active.nonEmpty && p.user.nonEmpty,
+                messageSendingComponentSend))
+          )
         )
       )
     }

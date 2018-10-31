@@ -46,7 +46,7 @@ object MessageSendingComponent {
         if (p.isActive)
           <.input(
             ^.`type` := "text",
-            ^.className := s"form-control$invalidClass",
+            ^.className := s"message-sending-input form-control$invalidClass",
             ^.value := s.input,
             ^.onChange ==> onChange,
             ^.onKeyDown ==> onSend,
@@ -55,17 +55,13 @@ object MessageSendingComponent {
         else
           <.input(
             ^.`type` := "text",
-            ^.className := s"form-control",
+            ^.className := s"message-sending-input form-control",
             ^.value := s.input,
             ^.onChange ==> onChange,
             ^.onKeyDown ==> onSend,
             ^.disabled := true
           )
-
-      <.div(
-        ^.className := "input-group",
-        input
-      )
+      input
     }
   }
 

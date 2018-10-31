@@ -37,16 +37,16 @@ object MessagesComponent {
         val time = timeString + (if (isOlderThan1Day(m.dateTimeUtcEpochSeconds))
                                    " " + dateString
                                  else "")
-        val color = if (user.id == m.from) "primary" else "success"
-        <.span(
-          ^.className := s"list-group-item list-group-item-$color",
-          <.b(m.from + ": "),
-          p + " ",
-          <.i(time)
+        val from = if (user.id == m.from) "-me" else "-friend"
+        <.div(
+          ^.className := s"list-group-item message message$from",
+//          <.b(m.from + ": "),
+          <.p(p, ^.className := "mb-2"),
+          <.div(^.className := "d-flex justify-content-end", <.i(time))
         )
       }
 
-      val tagMods = (^.className := "list-group-item") :: p.user.toList
+      val tagMods = (^.className := "list-group scroll-messages py-4") :: p.user.toList
         .flatMap(u => p.messages.map(message(u)))
       <.div(tagMods: _*)
     }

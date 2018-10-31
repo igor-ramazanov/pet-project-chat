@@ -50,7 +50,7 @@ object UsersComponent {
       def contact(u: String) = {
         val isActive = p.active.contains(u)
         val className =
-          s"list-group-item list-group-item-action${if (isActive) " active"
+          s"contact list-group-item list-group-item-action${if (isActive) " active"
           else ""}"
         <.button(
           ^.`type` := "button",
@@ -82,9 +82,11 @@ object UsersComponent {
         ^.value := s.input
       )
 
-      val header = <.span(^.className := "list-group-item", "Contacts")
+      val header =
+        <.span(^.className := "list-group-item text-center font-weight-bold",
+               "Contacts")
 
-      val tagMods = (^.className := "list-group") :: header :: addNewContactInput :: contacts
+      val tagMods = (^.className := "list-group scroll-contacts") :: header :: addNewContactInput :: contacts
 
       <.div(tagMods: _*)
     }
