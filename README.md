@@ -4,14 +4,14 @@ Personal pet-project I am working on for self-education purposes.
 
 The project is a simple real-time chat on websockets.
 
-**Caution:** The project still in the active development phase and I am not promising that everything works as expected.
+**The project has lack of some features like email verification on sign up or producing minified frontend assets. I'd like to stop with the current state and use this project as a simplified example of my work.**
 
-Technologies used:
+**Technologies used:**
 1. [Cats](https://typelevel.org/cats/) - for writing abstract code and as a standardized interface between other libraries
 2. [Cats Effect](https://typelevel.org/cats-effect/) - for abstracting over concrete IO monad
 3. [Monix](https://monix.io) - concrete implementation of IO monad
 4. [Redis](https://redis.io) - storage and pub-sub mechanism
-5. [ScalaJS](http://scala-js.org/), [ScalaJS bindings for ReactJS](https://github.com/japgolly/scalajs-react) and [Bootstrap 4](https://getbootstrap.com) - for web client, **web client is ready in terms of functionality, but not in terms of UI/UX**
+5. [ScalaJS](http://scala-js.org/), [ScalaJS bindings for ReactJS](https://github.com/japgolly/scalajs-react), [Bootstrap 4](https://getbootstrap.com) and [ScalaCSS](https://github.com/japgolly/scalacss) - for web client
 6. [OpenAPI](https://swagger.io) - API documentation
 7. [ScalaTest](http://www.scalatest.org) with [ScalaCheck](https://www.scalacheck.org) - for integration property-based tests
 
