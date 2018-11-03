@@ -19,20 +19,19 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
     private def collapseValidated[T](
         data: ValidatedNec[DecodingFailure,
                            ValidatedNec[DomainEntityValidationError, T]])
-      : Either[NonEmptyChain[String], T] =
-      data
-        .bimap(
-          _.map(_.message),
-          _.bimap(
-            _.map(_.errorMessage),
-            identity
-          )
-        )
+      : Either[NonEmptyChain[String], T] = {
+      val withErrorsAsString = data.bimap(
+        _.map(_.message),
+        _.leftMap(_.map(_.errorMessage))
+      )
+
+      withErrorsAsString
         .fold(
           _.invalid[T],
           identity
         )
         .toEither
+    }
 
     private def collapseEither[T](
         data: Either[String, Either[NonEmptyChain[String], T]]) =
