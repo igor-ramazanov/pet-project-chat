@@ -6,7 +6,11 @@ import cats.effect.{Async, Timer}
 import com.github.igorramazanov.chat.api.PersistenceMessagesApi
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import com.github.igorramazanov.chat.InterpretersInstances
-import com.github.igorramazanov.chat.api.{IncomingMessagesApi, KvStoreApi, OutgoingMessagesApi}
+import com.github.igorramazanov.chat.api.{
+  IncomingMessagesApi,
+  KvStoreApi,
+  OutgoingMessagesApi
+}
 import scredis.{Redis, SubscriberClient}
 
 import scala.concurrent.ExecutionContext

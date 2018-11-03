@@ -43,7 +43,7 @@ object ContactsComponent {
       $.modState(_.copy(input = text))
 
     private def isInvalid(user: Option[User], input: String) =
-      input.isEmpty || user.exists(_.id == input)
+      input.isEmpty || user.exists(_.id.value == input)
 
     private def addNewContact(e: ReactKeyboardEventFromInput): Callback = {
       val newContact = e.target.value

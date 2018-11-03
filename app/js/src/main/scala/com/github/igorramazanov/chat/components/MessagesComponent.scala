@@ -66,7 +66,8 @@ object MessagesComponent {
         <.div(
           ^.className := s"list-group-item",
           Styles.message,
-          if (user.id == m.from) Styles.messageMe else Styles.messageFriend,
+          if (user.id.value == m.from) Styles.messageMe
+          else Styles.messageFriend,
           <.p(p, ^.className := "mb-2"),
           <.div(^.className := "d-flex justify-content-end",
                 <.i(Styles.time, time))

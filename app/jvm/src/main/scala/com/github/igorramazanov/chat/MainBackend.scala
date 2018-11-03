@@ -3,11 +3,11 @@ package com.github.igorramazanov.chat
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
-import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.unmarshalling.{FromRequestUnmarshaller, Unmarshaller}
+import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorMaterializer, Materializer}
 import cats.effect.Effect
@@ -22,11 +22,15 @@ import com.github.igorramazanov.chat.api.{
   UserApi
 }
 import com.github.igorramazanov.chat.domain.ChatMessage.GeneralChatMessage
-import com.github.igorramazanov.chat.domain.{KeepAliveMessage, User}
+import com.github.igorramazanov.chat.domain.{
+  KeepAliveMessage,
+  SignUpRequest,
+  User
+}
 import com.github.igorramazanov.chat.interpreter.redis.RedisInterpreters
 import com.github.igorramazanov.chat.json.{
-  DomainEntitiesJsonSupport,
-  DomainEntitiesSprayJsonSupport
+  DomainEntitiesCirceJsonSupport,
+  DomainEntitiesJsonSupport
 }
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -57,7 +61,7 @@ object MainBackend {
         override def unsafeToFuture[A](f: Task[A]): Future[A] = f.runAsync
       }
     implicit val jsonSupport: DomainEntitiesJsonSupport =
-      DomainEntitiesSprayJsonSupport
+      DomainEntitiesCirceJsonSupport
 
     import RedisInterpreters.redis
     val interpreters = InterpretersInstances[Task]
@@ -87,21 +91,28 @@ object MainBackend {
   ): Route = {
     import DomainEntitiesJsonSupport._
     import jsonSupport._
-    implicit val userFromRequestUnmarshaller: Unmarshaller[HttpRequest, User] =
-      new FromRequestUnmarshaller[User] {
+
+    implicit val userFromRequestUnmarshaller =
+      new FromRequestUnmarshaller[SignUpRequest] {
         override def apply(value: HttpRequest)(
             implicit ec: ExecutionContext,
-            materializer: Materializer): Future[User] =
+            materializer: Materializer): Future[SignUpRequest] = {
+          import cats.data.NonEmptyChain._
+          import cats.instances.string._
+          import cats.syntax.show._
           value.entity
             .toStrict(messageStrictTimeout)
             .flatMap { entity =>
-              entity.data.utf8String.toUser match {
-                case Left(error) =>
+              entity.data.utf8String.toSignUpRequest match {
+                case Left(errors) =>
+                  val errorsAsString = errors.show
+
                   Future.failed(new RuntimeException(
-                    s"Couldn't unmarshall HttpRequest entity to User, entity: $entity, reason: $error"))
-                case Right(user) => Future.successful(user)
+                    s"Couldn't unmarshall HttpRequest entity to SignUpRequest case class, entity: $entity, reasons: $errorsAsString"))
+                case Right(signUpRequest) => Future.successful(signUpRequest)
               }
             }
+        }
       }
     get {
       getFromResourceDirectory("") ~
@@ -145,28 +156,29 @@ object MainBackend {
         }
       } ~ path("signup") {
       post {
-        entity(as[User]) { user =>
-          (for {
-            _ <- NonEmptyString.from(user.id)
-            _ <- NonEmptyString.from(user.password)
-          } yield {
-            logger.debug(s"Sign up request start, id: '${user.id}'")
-            onComplete(UserApi.save(user).unsafeToFuture) {
-              case Success(Right(_)) =>
-                logger.debug(s"Sign up request success, id: '${user.id}'")
-                complete(StatusCodes.OK)
-              case Success(Left(reason)) =>
-                logger.debug(
-                  s"Sign up request forbidden: $reason, id: '${user.id}'")
-                complete(StatusCodes.Conflict)
-              case Failure(ex) =>
-                logger.error(
-                  s"Couldn't save user '${user.id}'. Error message: ${ex.getMessage}",
-                  ex)
-                complete(StatusCodes.InternalServerError)
-            }
-          }).getOrElse {
-            complete(StatusCodes.BadRequest)
+        entity(as[SignUpRequest]) { request =>
+          request.validateToUser match {
+            case Left(invalidSignUpRequest) =>
+              complete(
+                HttpResponse(status = StatusCodes.BadRequest,
+                             entity = HttpEntity(MediaTypes.`application/json`,
+                                                 invalidSignUpRequest.toJson)))
+            case Right(user) =>
+              logger.debug(s"Sign up request start, id: '${user.id}'")
+              onComplete(UserApi.save(user).unsafeToFuture) {
+                case Success(Right(_)) =>
+                  logger.debug(s"Sign up request success, id: '${user.id}'")
+                  complete(StatusCodes.OK)
+                case Success(Left(reason)) =>
+                  logger.debug(
+                    s"Sign up request forbidden: $reason, id: '${user.id}'")
+                  complete(StatusCodes.Conflict)
+                case Failure(ex) =>
+                  logger.error(
+                    s"Couldn't save user '${user.id}'. Error message: ${ex.getMessage}",
+                    ex)
+                  complete(StatusCodes.InternalServerError)
+              }
           }
         }
       }
@@ -186,14 +198,14 @@ object MainBackend {
     import DomainEntitiesJsonSupport._
     import jsonSupport._
 
-    val source = Effect[F].map(PersistenceApi.ofUserOrdered(user.id)) {
+    val source = Effect[F].map(PersistenceApi.ofUserOrdered(user.id.value)) {
       messages =>
         val sourcePersistent =
           Source(messages).map(m => TextMessage(m.toJson))
         val sourceFlow = Source
           .fromPublisher(
             IncomingApi
-              .subscribe(user.id))
+              .subscribe(user.id.value))
           .map(m => TextMessage(m.toJson))
 
         sourcePersistent

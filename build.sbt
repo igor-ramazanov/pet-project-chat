@@ -1,6 +1,8 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 lazy val cleanDockerImages = taskKey[Unit]("Cleans docker images with tag:none")
 
+name := "pet-project-chat"
+
 val compilerOptions = Seq(
   // format: off
   "-deprecation",                      // Emit warning and location for usages of deprecated APIs.
@@ -11,6 +13,7 @@ val compilerOptions = Seq(
   "-language:experimental.macros",     // Allow macro definition (besides implementation and application)
   "-language:higherKinds",             // Allow higher-kinded types
   "-language:implicitConversions",     // Allow definition of implicit functions called views
+  "-language:reflectiveCalls",         // Allow reflective access to members of structural types
   "-unchecked",                        // Enable additional warnings where generated code depends on assumptions.
   "-Xcheckinit",                       // Wrap field accessors to throw an exception on uninitialized access.
   "-Xfatal-warnings",                  // Fail the compilation if there are any warnings.
@@ -59,9 +62,9 @@ lazy val root = project.in(file("."))
 val sharedSettings = Seq(
   organization := "io.github.igorramazanov",
   libraryDependencies ++= Seq(
-//    "io.circe" %%% "circe-core" % "0.10.0",
-//    "io.circe" %%% "circe-parser" % "0.10.0",
-//    "io.circe" %%% "circe-generic" % "0.10.0"
+    "io.circe" %%% "circe-core" % "0.10.0",
+    "io.circe" %%% "circe-parser" % "0.10.0",
+    "io.circe" %%% "circe-generic" % "0.10.0"
   ),
   resolvers ++= Seq(Resolver.sonatypeRepo("releases")),
   wartremoverErrors ++= Warts.unsafe,

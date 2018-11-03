@@ -12,15 +12,14 @@ object UserApiToKvStoreApiInterpreter {
       override def find(id: String, password: String): F[Option[User]] = {
         for {
           passwordOpt <- kvStoreAlgebra.get(id)
-        } yield passwordOpt.filter(password === _).map(User(id, _))
+        } yield passwordOpt.filter(password === _).map(User.unsafeCreate(id, _))
       }
 
       override def save(user: User): F[Either[String, Unit]] = {
         kvStoreAlgebra
-          .setIfEmpty(user.id, user.password)
-          .map(
-            if (_) ().asRight[String]
-            else s"User '${user.id}' already exists".asLeft[Unit])
+          .setIfEmpty(user.id.value, user.password.value)
+          .map(if (_) ().asRight[String]
+          else s"User '${user.id}' already exists".asLeft[Unit])
       }
     }
 }

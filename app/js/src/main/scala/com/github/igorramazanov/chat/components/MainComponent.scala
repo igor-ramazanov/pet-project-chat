@@ -75,7 +75,7 @@ object MainComponent {
         def onopen(e: Event): Unit = {
           direct.modState { s =>
             schedulePings(s)
-            s.copy(user = Some(User(username, password)),
+            s.copy(user = Some(User.unsafeCreate(username, password)),
                    currentPage = Page.Chat)
           }
         }
@@ -133,7 +133,7 @@ object MainComponent {
       $.modState(_.copy(isInFlight = true)) >>
         Ajax("POST", "/signup").setRequestContentTypeJsonUtf8
           .send(
-            User(username, password).toJson
+            User.unsafeCreate(username, password).toJson
           )
           .onComplete { xhr =>
             $.modState(_.copy(isInFlight = false)) >> (xhr.status match {
