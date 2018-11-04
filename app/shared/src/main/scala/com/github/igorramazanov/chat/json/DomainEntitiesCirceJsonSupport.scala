@@ -1,15 +1,17 @@
 package com.github.igorramazanov.chat.json
-import cats.Applicative
+
+import cats.data.Validated._
 import cats.data.{NonEmptyChain, ValidatedNec}
-import cats.syntax.all._
+import cats.implicits._
 import com.github.igorramazanov.chat.domain._
-import com.github.igorramazanov.chat.validation.DomainEntityValidationError
+import com.github.igorramazanov.chat.validation.DomainEntityValidationError.ValidationResult
 import io.circe._
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.parser.{decode, parse}
 import io.circe.syntax._
 
 object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
+
   private def decodeWithoutValidation[A: Decoder](
       jsonString: String): Either[NonEmptyChain[String], A] =
     decode(jsonString).leftMap(error => NonEmptyChain(error.getMessage))
@@ -17,17 +19,17 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
   override implicit def userJsonApi: JsonApi[User] = new JsonApi[User] {
 
     private def collapseValidated[T](
-        data: ValidatedNec[DecodingFailure,
-                           ValidatedNec[DomainEntityValidationError, T]])
+        validationAndParsingResult: ValidatedNec[DecodingFailure,
+                                                 ValidationResult[T]])
       : Either[NonEmptyChain[String], T] = {
-      val withErrorsAsString = data.bimap(
-        _.map(_.message),
-        _.leftMap(_.map(_.errorMessage))
+      val withErrorsAsString = validationAndParsingResult.bimap(
+        jsonDecodingFailures => jsonDecodingFailures.map(_.message),
+        validationResult => validationResult.leftMap(_.map(_.errorMessage))
       )
 
       withErrorsAsString
         .fold(
-          _.invalid[T],
+          jsonDecodingFailures => jsonDecodingFailures.invalid[T],
           identity
         )
         .toEither
@@ -53,15 +55,16 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
           _.message,
           json => {
             val cursor = json.hcursor
-            val id = cursor.get[String]("id").toValidatedNec
-            val password = cursor.get[String]("password").toValidatedNec
+            type DecodingResult[A] = ValidatedNec[DecodingFailure, A]
 
-            val validated =
-              Applicative[({ type F[T] = ValidatedNec[DecodingFailure, T] })#F]
-                .map2(id, password) {
-                  case (i, p) =>
-                    User.safeCreate(i, p)
-                }
+            val id: DecodingResult[String] = cursor
+              .get[String]("id")
+              .toValidatedNec
+            val password: DecodingResult[String] = cursor
+              .get[String]("password")
+              .toValidatedNec
+
+            val validated = (id, password).mapN(User.safeCreate)
 
             collapseValidated(validated)
           }
@@ -121,7 +124,8 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
           NonEmptyChain
             .fromSeq(errors)
             .map(InvalidSignUpRequest)
-            .map(_.asRight[DecodingFailure])
+            .map(invalidSignUpRequest =>
+              invalidSignUpRequest.asRight[DecodingFailure])
             .getOrElse(DecodingFailure("validationErrors should not be empty",
                                        Nil).asLeft[InvalidSignUpRequest])
 

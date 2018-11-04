@@ -3,6 +3,7 @@ package com.github.igorramazanov.chat.domain
 import cats.data.Validated._
 import cats.data.{NonEmptyChain, ValidatedNec}
 import cats.implicits._
+
 import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.validation.DomainEntityValidationError.ValidationResult
 import com.github.igorramazanov.chat.validation.{
@@ -96,7 +97,9 @@ object User {
 
     private def validate2SameAdjacentCharacters(
         password: String): ValidationResult[String] =
-      if (password.zip(password.tail).exists { case (a, b) => a == b })
+      if (password.length >= 2 && password.zip(password.tail).exists {
+            case (a, b) => a == b
+          })
         PasswordValidationError.Contains2SameAdjacentCharacters.invalidNec
       else password.validNec
 
@@ -109,20 +112,20 @@ object User {
     private def validateContainUppercaseCharacter(
         password: String): ValidationResult[String] =
       if (!password.exists(uppercase))
-        PasswordValidationError.DoesNotContainLowercaseCharacter.invalidNec
+        PasswordValidationError.DoesNotContainUppercaseCharacter.invalidNec
       else password.validNec
 
     private def validateContainSpecialCharacter(
         password: String): ValidationResult[String] = {
       if (!password.exists(special))
-        PasswordValidationError.DoesNotContainLowercaseCharacter.invalidNec
+        PasswordValidationError.DoesNotContainSpecialCharacter.invalidNec
       else password.validNec
     }
 
     private def validateContainDigit(
         password: String): ValidationResult[String] =
       if (!password.exists(digits))
-        PasswordValidationError.DoesNotContainLowercaseCharacter.invalidNec
+        PasswordValidationError.DoesNotContainDigitCharacter.invalidNec
       else password.validNec
 
     def validate(password: String): ValidationResult[Password] = {

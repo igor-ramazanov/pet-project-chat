@@ -1,4 +1,6 @@
 package com.github.igorramazanov.chat.components
+import cats.data.Validated
+import com.github.igorramazanov.chat.domain.User
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{
   BackendScope,
@@ -24,22 +26,41 @@ object WelcomeComponent {
                          isInFlight: Boolean)
 
   final case class State(username: String,
+                         usernameValidationErrors: List[String],
                          password: String,
+                         passwordValidationErrors: List[String],
                          isFirstTime: Boolean) {
-    def isEmpty: Boolean = username.isEmpty || password.isEmpty
+    def isValid: Boolean =
+      usernameValidationErrors.isEmpty && passwordValidationErrors.isEmpty
   }
 
   object State {
-    def init: State = State("", "", isFirstTime = true)
+    def init: State = State("", Nil, "", Nil, isFirstTime = true)
   }
 
   final class Backend($ : BackendScope[Props, State]) {
-    private def validate: CallbackTo[Unit] =
+    private def validateUsername: CallbackTo[Unit] =
       $.modState { s =>
-        if (s.isEmpty) {
-          s.copy(isFirstTime = false)
-        } else {
-          s
+        User.Id.validate(s.username) match {
+          case Validated.Valid(_) => s.copy(usernameValidationErrors = Nil)
+          case Validated.Invalid(errors) =>
+            s.copy(
+              usernameValidationErrors =
+                errors.toNonEmptyList.toList.map(_.errorMessage)
+            )
+        }
+      }
+
+    private def validatePassword: CallbackTo[Unit] =
+      $.modState { s =>
+        User.Password.validate(s.password) match {
+          case Validated.Valid(_) =>
+            s.copy(passwordValidationErrors = Nil)
+          case Validated.Invalid(errors) =>
+            s.copy(
+              passwordValidationErrors =
+                errors.toNonEmptyList.toList.map(_.errorMessage)
+            )
         }
       }
 
@@ -47,8 +68,7 @@ object WelcomeComponent {
       for {
         p <- $.props
         s <- $.state
-        _ <- validate
-        _ <- if (!s.isEmpty) p.signIn(s.username, s.password)
+        _ <- if (s.isValid) p.signIn(s.username, s.password)
         else Callback.empty
       } yield ()
 
@@ -56,13 +76,12 @@ object WelcomeComponent {
       for {
         p <- $.props
         s <- $.state
-        _ <- validate
-        _ <- if (!s.isEmpty) p.signUp(s.username, s.password)
+        _ <- if (s.isValid) p.signUp(s.username, s.password)
         else Callback.empty
       } yield ()
 
-    private def inputClass(isFirstTime: Boolean, str: String) =
-      if (!isFirstTime && str.isEmpty) "form-control is-invalid"
+    private def inputClass(isFirstTime: Boolean, isValid: Boolean) =
+      if (!isFirstTime && !isValid) "form-control is-invalid"
       else "form-control"
 
     private def button(isInFlight: Boolean, text: String, c: Callback) = {
@@ -77,40 +96,58 @@ object WelcomeComponent {
     }
 
     def render(p: Props, s: State): VdomElement = {
+      def validationErrorsTagMods(validationErrors: List[String]) =
+        if (validationErrors.nonEmpty)
+          (^.className := "invalid-feedback") :: validationErrors
+            .map(vdomNodeFromString)
+            .mkTagMod(<.br) :: Nil
+        else (^.className := "invalid-feedback") :: Nil
+
+      val usernameValidationErrors =
+        <.div(validationErrorsTagMods(s.usernameValidationErrors): _*)
+      val passwordValidationErrors =
+        <.div(validationErrorsTagMods(s.passwordValidationErrors): _*)
+
       <.div(
         ^.className := "container",
         <.div(
           ^.className := "row align-items-center",
           <.div(
-            ^.className := "col-10 col-md-6 offset-md-3 d-flex justify-content-center",
+            ^.className := "col-10 col-md-6 offset-md-3 d-flex justify-content-center my-2",
             Styles.welcome,
             <.div(
               <.input(
                 ^.`type` := "text",
-                ^.className := inputClass(s.isFirstTime, s.username),
+                ^.className := inputClass(s.isFirstTime,
+                                          s.usernameValidationErrors.isEmpty),
                 ^.placeholder := "Username",
                 ^.value := s.username,
                 ^.onChange ==> { e: ReactEventFromInput =>
                   e.persist()
-                  $.modState(_.copy(username = e.target.value))
+                  $.modState(_.copy(username = e.target.value,
+                                    isFirstTime = false)) >> validateUsername
                 }
-              )
+              ),
+              usernameValidationErrors
             ),
             <.div(
-              ^.className := "my-3",
+              ^.className := "my-2",
               <.input(
                 ^.`type` := "password",
-                ^.className := inputClass(s.isFirstTime, s.password),
+                ^.className := inputClass(s.isFirstTime,
+                                          s.passwordValidationErrors.isEmpty),
                 ^.placeholder := "Password",
                 ^.value := s.password,
                 ^.onChange ==> { e: ReactEventFromInput =>
                   e.persist()
-                  $.modState(_.copy(password = e.target.value))
+                  $.modState(_.copy(password = e.target.value,
+                                    isFirstTime = false)) >> validatePassword
                 }
-              )
+              ),
+              passwordValidationErrors
             ),
             <.div(
-              ^.className := "d-flex justify-content-between",
+              ^.className := "d-flex justify-content-between my-2",
               button(p.isInFlight, "Sign In", signIn),
               button(p.isInFlight, "Sign Up", signUp)
             )

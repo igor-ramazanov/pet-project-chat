@@ -64,7 +64,8 @@ val sharedSettings = Seq(
   libraryDependencies ++= Seq(
     "io.circe" %%% "circe-core" % "0.10.0",
     "io.circe" %%% "circe-parser" % "0.10.0",
-    "io.circe" %%% "circe-generic" % "0.10.0"
+    "io.circe" %%% "circe-generic" % "0.10.0",
+    "org.scalatest" %%% "scalatest" % "3.0.5" % "it,test"
   ),
   resolvers ++= Seq(Resolver.sonatypeRepo("releases")),
   wartremoverErrors ++= Warts.unsafe,
@@ -86,7 +87,6 @@ val jvmSettings = Seq(
     "ch.qos.logback" % "logback-classic" % "1.2.3",
     "com.typesafe.akka" %% "akka-slf4j" % "2.5.12" % "compile,it,test",
     "com.typesafe.akka" %% "akka-http-testkit" % "10.1.5" % "it,test",
-    "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
     "org.scalacheck" %% "scalacheck" % "1.14.0" % "it,test",
     "com.dimafeng" %% "testcontainers-scala" % "0.20.0" % "it,test"
   ),

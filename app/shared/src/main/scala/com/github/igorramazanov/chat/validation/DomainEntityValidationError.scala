@@ -15,11 +15,11 @@ object IdValidationError {
   case object ContainsNotOnlyLowercaseLatinCharacters
       extends IdValidationError {
     override def errorMessage: String =
-      "User id should contain only lowercase latin characters"
+      "Id should contain only lowercase latin characters"
   }
 
   case object IsEmpty extends IdValidationError {
-    override def errorMessage: String = "Should not be empty"
+    override def errorMessage: String = "Id should not be empty"
   }
 }
 
@@ -56,6 +56,7 @@ object PasswordValidationError {
   }
 
   case object DoesNotContainDigitCharacter extends PasswordValidationError {
-    override def errorMessage: String = "Should contain at least 1 digit"
+    override def errorMessage: String =
+      "Password should contain at least 1 digit"
   }
 }

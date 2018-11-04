@@ -28,7 +28,7 @@ object ChatComponent {
         .getOrElse(Nil)
 
       def messageSendingComponentSend(m: String) =
-        (for {
+        (for {bui
           contact <- s.active
         } yield p.send(contact, m)).getOrElse(Callback.empty)
 
