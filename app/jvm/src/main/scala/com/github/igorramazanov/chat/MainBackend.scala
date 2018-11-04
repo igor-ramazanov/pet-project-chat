@@ -33,14 +33,14 @@ object MainBackend {
     sys.env.getOrElse("REDIS_HOST", "localhost")
   private val emailVerificationLinkPrefix: String = {
     val s = sys.env
-      .getOrElse("EMAIL_VERIFICATION_LINK_PREFIX", "http://localhost:8080")
+      .getOrElse("EMAIL_VERIFICATION_LINK_PREFIX", "http://10.8.0.2:8080")
     if (s.endsWith("/")) s.init else s
   }
 
   setLogLevel()
 
   private def setLogLevel(): Unit = {
-    sys.props.update("LOG_LEVEL", sys.env.getOrElse("LOG_LEVEL", "INFO"))
+    sys.props.update("LOG_LEVEL", sys.env.getOrElse("LOG_LEVEL", "DEBUG"))
   }
 
   def main(args: Array[String]): Unit = {

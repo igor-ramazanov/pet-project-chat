@@ -67,7 +67,7 @@ object SignUp {
               import cats.syntax.all._
 
               val verificationStartEffect =
-                UserApi[F].exists(user.email).flatMap { doesUserAlreadyExist =>
+                UserApi[F].exists(user.id).flatMap { doesUserAlreadyExist =>
                   if (doesUserAlreadyExist) {
                     logger.debug(
                       s"User with email ${user.email.value} already exists, conflict")

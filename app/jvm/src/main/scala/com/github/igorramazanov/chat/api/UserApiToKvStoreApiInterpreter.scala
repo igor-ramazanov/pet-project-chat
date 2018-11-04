@@ -19,24 +19,28 @@ object UserApiToKvStoreApiInterpreter {
                            email: User.Email,
                            password: User.Password): F[Option[User]] = {
         for {
-          rawJson <- kvStoreApi.get(email.value)
+          rawJson <- kvStoreApi.get(id.value)
         } yield
           rawJson
             .flatMap { jsonString =>
-              jsonString.toUser.toOption
+              val u = jsonString.toUser.toOption
+              println(u)
+              u
             }
-            .filter(u =>
-              u.password.value === password.value && u.id.value === id.value)
+            .filter { u =>
+              u.password.value === password.value &&
+                u.email.value === email.value
+            }
       }
 
       override def save(user: User): F[Either[UserAlreadyExists.type, Unit]] = {
         kvStoreApi
-          .setIfEmpty(user.id.value, user.password.value)
+          .setIfEmpty(user.id.value, user.toJson)
           .map(if (_) ().asRight[UserAlreadyExists.type]
           else UserAlreadyExists.asLeft[Unit])
       }
 
-      override def exists(email: User.Email): F[Boolean] =
-        kvStoreApi.get(email.value).map(_.nonEmpty)
+      override def exists(id: User.Id): F[Boolean] =
+        kvStoreApi.get(id.value).map(_.nonEmpty)
     }
 }

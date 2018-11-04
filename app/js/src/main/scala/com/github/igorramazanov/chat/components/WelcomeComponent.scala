@@ -88,7 +88,7 @@ object WelcomeComponent {
         s <- $.state
         _ <- if (s.isValid)
           p.signIn(User.Id.unsafeCreate(s.id),
-                   User.Email.unsafeCreate(s.id),
+                   User.Email.unsafeCreate(s.email),
                    User.Password.unsafeCreate(s.password))
         else Callback.empty
       } yield ()
