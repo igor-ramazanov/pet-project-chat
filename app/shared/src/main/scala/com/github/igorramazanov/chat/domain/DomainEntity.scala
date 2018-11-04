@@ -3,11 +3,11 @@ package com.github.igorramazanov.chat.domain
 import cats.data.Validated._
 import cats.data.{NonEmptyChain, ValidatedNec}
 import cats.implicits._
-
 import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.validation.DomainEntityValidationError.ValidationResult
 import com.github.igorramazanov.chat.validation.{
   DomainEntityValidationError,
+  EmailValidationError,
   IdValidationError,
   PasswordValidationError
 }
@@ -42,29 +42,39 @@ object KeepAliveMessage {
   }
 }
 
-final case class SignUpRequest(id: String, password: String)
+final case class SignUpRequest(id: String, password: String, email: String)
     extends DomainEntity {
   import cats.syntax.either._
 
   def validateToUser: Either[InvalidSignUpRequest, User] =
     User
-      .safeCreate(id, password)
+      .safeCreate(id, password, email)
       .toEither
       .leftMap(validationErrors =>
         InvalidSignUpRequest(validationErrors.flatMap(e =>
           NonEmptyChain(e.errorMessage))))
+
+  def unsafeToUser: User =
+    User.unsafeCreate(id, password, email)
 }
 
 final case class InvalidSignUpRequest(validationErrors: NonEmptyChain[String])
     extends DomainEntity
 
-final case class User private (id: User.Id, password: User.Password)
+final case class User private (id: User.Id,
+                               password: User.Password,
+                               email: User.Email)
     extends DomainEntity
 
 object User {
+  private[domain] def apply(id: Id, password: Password, email: Email): User =
+    new User(id, password, email)
+
   final case class Id private[domain] (value: String) extends AnyVal
 
   object Id {
+    private[domain] def apply(value: String): Id = new Id(value)
+
     private def validateContainsOnlyLowercaseLatinCharacters(
         id: String): ValidationResult[String] =
       if (id.forall(lowercase)) id.validNec
@@ -76,13 +86,17 @@ object User {
     def validate(id: String): ValidationResult[Id] =
       (validateContainsOnlyLowercaseLatinCharacters(id), validateNonEmpty(id))
         .mapN {
-          case _ => new Id(id)
+          case _ => Id(id)
         }
+
+    def unsafeCreate(id: String): Id = Id(id)
   }
 
   final case class Password private[domain] (value: String) extends AnyVal
 
   object Password {
+
+    private[domain] def apply(value: String): Password = new Password(value)
 
     private def validateLengthLess(password: String): ValidationResult[String] =
       if (password.length < 10)
@@ -103,26 +117,26 @@ object User {
         PasswordValidationError.Contains2SameAdjacentCharacters.invalidNec
       else password.validNec
 
-    private def validateContainLowercaseCharacter(
+    private def validateContainsLowercaseCharacter(
         password: String): ValidationResult[String] =
       if (!password.exists(lowercase))
         PasswordValidationError.DoesNotContainLowercaseCharacter.invalidNec
       else password.validNec
 
-    private def validateContainUppercaseCharacter(
+    private def validateContainsUppercaseCharacter(
         password: String): ValidationResult[String] =
       if (!password.exists(uppercase))
         PasswordValidationError.DoesNotContainUppercaseCharacter.invalidNec
       else password.validNec
 
-    private def validateContainSpecialCharacter(
+    private def validateContainsSpecialCharacter(
         password: String): ValidationResult[String] = {
       if (!password.exists(special))
         PasswordValidationError.DoesNotContainSpecialCharacter.invalidNec
       else password.validNec
     }
 
-    private def validateContainDigit(
+    private def validateContainsDigit(
         password: String): ValidationResult[String] =
       if (!password.exists(digits))
         PasswordValidationError.DoesNotContainDigitCharacter.invalidNec
@@ -132,22 +146,46 @@ object User {
       (validateLengthLess(password),
        validateLengthLonger(password),
        validate2SameAdjacentCharacters(password),
-       validateContainLowercaseCharacter(password),
-       validateContainUppercaseCharacter(password),
-       validateContainDigit(password),
-       validateContainSpecialCharacter(password)).mapN {
-        case _ => new Password(password)
+       validateContainsLowercaseCharacter(password),
+       validateContainsUppercaseCharacter(password),
+       validateContainsDigit(password),
+       validateContainsSpecialCharacter(password)).mapN {
+        case _ => Password(password)
       }
     }
+
+    def unsafeCreate(password: String): Password = Password(password)
+  }
+
+  final case class Email private[domain] (value: String) extends AnyVal
+
+  object Email {
+    final case class VerificationId(value: String) extends AnyVal
+
+    private[domain] def apply(value: String): Email = new Email(value)
+
+    private def `validateAtLeast1@Character`(
+        email: String): ValidationResult[String] =
+      if (email.contains("@")) email.validNec
+      else EmailValidationError.`DoesNotContainAtLeast1@Character`.invalidNec
+
+    def validate(email: String): ValidationResult[Email] =
+      `validateAtLeast1@Character`(email).map(_ => Email(email))
+
+    def unsafeCreate(email: String): Email = Email(email)
   }
 
   def safeCreate(
       id: String,
-      password: String): ValidatedNec[DomainEntityValidationError, User] = {
-    (Id.validate(id), Password.validate(password)).mapN((id, password) =>
-      new User(id, password))
+      password: String,
+      email: String): ValidatedNec[DomainEntityValidationError, User] = {
+    (Id.validate(id), Password.validate(password), Email.validate(email))
+      .mapN((id, password, email) => User(id, password, email))
   }
 
-  def unsafeCreate(id: String, password: String): User =
-    new User(new Id(id), new Password(password))
+  def safeCreate(id: Id, password: Password, email: Email): User =
+    User(id, password, email)
+
+  def unsafeCreate(id: String, password: String, email: String): User =
+    new User(Id(id), Password(password), Email(email))
 }

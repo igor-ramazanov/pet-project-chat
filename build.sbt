@@ -64,8 +64,7 @@ val sharedSettings = Seq(
   libraryDependencies ++= Seq(
     "io.circe" %%% "circe-core" % "0.10.0",
     "io.circe" %%% "circe-parser" % "0.10.0",
-    "io.circe" %%% "circe-generic" % "0.10.0",
-    "org.scalatest" %%% "scalatest" % "3.0.5" % "it,test"
+    "io.circe" %%% "circe-generic" % "0.10.0"
   ),
   resolvers ++= Seq(Resolver.sonatypeRepo("releases")),
   wartremoverErrors ++= Warts.unsafe,
@@ -78,6 +77,9 @@ val jvmSettings = Seq(
   libraryDependencies ++= Seq(
     "com.github.mpilquist" %% "simulacrum" % "0.14.0",
     "io.monix" %% "monix" % "3.0.0-RC1",
+    "com.google.oauth-client" % "google-oauth-client-jetty" % "1.26.0",
+    "com.google.api-client" % "google-api-client" % "1.26.0",
+    "com.google.apis" % "google-api-services-gmail" % "v1-rev96-1.25.0",
     "eu.timepit" %% "refined" % "0.9.2",
     "com.typesafe.akka" %% "akka-http" % "10.1.5",
     "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5" % "compile,it,test",
@@ -85,8 +87,11 @@ val jvmSettings = Seq(
       .exclude("com.typesafe.akka", s"akka-actor_${scalaBinaryVersion.value}"),
     "com.typesafe.akka" %% "akka-stream" % "2.5.12",
     "ch.qos.logback" % "logback-classic" % "1.2.3",
+//    "javax.mail" % "javax.mail-api" % "1.6.2",
+    "com.sun.mail" % "javax.mail" % "1.6.2",
     "com.typesafe.akka" %% "akka-slf4j" % "2.5.12" % "compile,it,test",
     "com.typesafe.akka" %% "akka-http-testkit" % "10.1.5" % "it,test",
+    "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
     "org.scalacheck" %% "scalacheck" % "1.14.0" % "it,test",
     "com.dimafeng" %% "testcontainers-scala" % "0.20.0" % "it,test"
   ),

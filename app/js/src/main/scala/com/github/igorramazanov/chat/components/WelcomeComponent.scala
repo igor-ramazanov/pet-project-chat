@@ -21,31 +21,36 @@ object WelcomeComponent {
       flexDirection.column
     )
   }
-  final case class Props(signIn: (String, String) => Callback,
-                         signUp: (String, String) => Callback,
-                         isInFlight: Boolean)
+  final case class Props(
+      signIn: (User.Id, User.Email, User.Password) => Callback,
+      signUp: (User.Id, User.Email, User.Password) => Callback,
+      isInFlight: Boolean)
 
-  final case class State(username: String,
-                         usernameValidationErrors: List[String],
+  final case class State(id: String,
+                         idValidationErrors: List[String],
                          password: String,
                          passwordValidationErrors: List[String],
+                         email: String,
+                         emailValidationErrors: List[String],
                          isFirstTime: Boolean) {
     def isValid: Boolean =
-      usernameValidationErrors.isEmpty && passwordValidationErrors.isEmpty
+      idValidationErrors.isEmpty &&
+        passwordValidationErrors.isEmpty &&
+        emailValidationErrors.isEmpty
   }
 
   object State {
-    def init: State = State("", Nil, "", Nil, isFirstTime = true)
+    def init: State = State("", Nil, "", Nil, "", Nil, isFirstTime = true)
   }
 
   final class Backend($ : BackendScope[Props, State]) {
     private def validateUsername: CallbackTo[Unit] =
       $.modState { s =>
-        User.Id.validate(s.username) match {
-          case Validated.Valid(_) => s.copy(usernameValidationErrors = Nil)
+        User.Id.validate(s.id) match {
+          case Validated.Valid(_) => s.copy(idValidationErrors = Nil)
           case Validated.Invalid(errors) =>
             s.copy(
-              usernameValidationErrors =
+              idValidationErrors =
                 errors.toNonEmptyList.toList.map(_.errorMessage)
             )
         }
@@ -64,11 +69,27 @@ object WelcomeComponent {
         }
       }
 
+    private def validateEmail: CallbackTo[Unit] =
+      $.modState { s =>
+        User.Email.validate(s.email) match {
+          case Validated.Valid(_) =>
+            s.copy(emailValidationErrors = Nil)
+          case Validated.Invalid(errors) =>
+            s.copy(
+              emailValidationErrors =
+                errors.toNonEmptyList.toList.map(_.errorMessage)
+            )
+        }
+      }
+
     private def signIn: CallbackTo[Unit] =
       for {
         p <- $.props
         s <- $.state
-        _ <- if (s.isValid) p.signIn(s.username, s.password)
+        _ <- if (s.isValid)
+          p.signIn(User.Id.unsafeCreate(s.id),
+                   User.Email.unsafeCreate(s.id),
+                   User.Password.unsafeCreate(s.password))
         else Callback.empty
       } yield ()
 
@@ -76,7 +97,10 @@ object WelcomeComponent {
       for {
         p <- $.props
         s <- $.state
-        _ <- if (s.isValid) p.signUp(s.username, s.password)
+        _ <- if (s.isValid)
+          p.signUp(User.Id.unsafeCreate(s.id),
+                   User.Email.unsafeCreate(s.email),
+                   User.Password.unsafeCreate(s.password))
         else Callback.empty
       } yield ()
 
@@ -103,32 +127,50 @@ object WelcomeComponent {
             .mkTagMod(<.br) :: Nil
         else (^.className := "invalid-feedback") :: Nil
 
-      val usernameValidationErrors =
-        <.div(validationErrorsTagMods(s.usernameValidationErrors): _*)
+      val idValidationErrors =
+        <.div(validationErrorsTagMods(s.idValidationErrors): _*)
       val passwordValidationErrors =
         <.div(validationErrorsTagMods(s.passwordValidationErrors): _*)
+      val emailValidationErrors =
+        <.div(validationErrorsTagMods(s.emailValidationErrors): _*)
 
       <.div(
         ^.className := "container",
         <.div(
           ^.className := "row align-items-center",
           <.div(
-            ^.className := "col-10 col-md-6 offset-md-3 d-flex justify-content-center my-2",
+            ^.className := "col-10 col-md-6 offset-md-3 d-flex justify-content-center",
             Styles.welcome,
             <.div(
+              ^.className := "my-2",
               <.input(
                 ^.`type` := "text",
                 ^.className := inputClass(s.isFirstTime,
-                                          s.usernameValidationErrors.isEmpty),
-                ^.placeholder := "Username",
-                ^.value := s.username,
+                                          s.idValidationErrors.isEmpty),
+                ^.placeholder := "Nickname",
+                ^.value := s.id,
                 ^.onChange ==> { e: ReactEventFromInput =>
                   e.persist()
-                  $.modState(_.copy(username = e.target.value,
-                                    isFirstTime = false)) >> validateUsername
+                  $.modState(_.copy(id = e.target.value, isFirstTime = false)) >> validateUsername
                 }
               ),
-              usernameValidationErrors
+              idValidationErrors
+            ),
+            <.div(
+              ^.className := "my-2",
+              <.input(
+                ^.`type` := "text",
+                ^.className := inputClass(s.isFirstTime,
+                                          s.emailValidationErrors.isEmpty),
+                ^.placeholder := "Email",
+                ^.value := s.email,
+                ^.onChange ==> { e: ReactEventFromInput =>
+                  e.persist()
+                  $.modState(_.copy(email = e.target.value,
+                                    isFirstTime = false)) >> validateEmail
+                }
+              ),
+              emailValidationErrors
             ),
             <.div(
               ^.className := "my-2",

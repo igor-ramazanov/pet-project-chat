@@ -42,12 +42,17 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
         identity
       )
 
+    //TODO replace by compile-time derivation/macro/reflection
     override def write(entity: User): String =
       Json
-        .obj("id" -> Json.fromString(entity.id.value),
-             "password" -> Json.fromString(entity.password.value))
+        .obj(
+          "id" -> Json.fromString(entity.id.value),
+          "password" -> Json.fromString(entity.password.value),
+          "email" -> Json.fromString(entity.email.value)
+        )
         .noSpaces
 
+    //TODO replace by compile-time derivation/macro/reflection
     override def read(
         jsonString: String): Either[NonEmptyChain[String], User] = {
       {
@@ -63,8 +68,12 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
             val password: DecodingResult[String] = cursor
               .get[String]("password")
               .toValidatedNec
+            val email: DecodingResult[String] = cursor
+              .get[String]("email")
+              .toValidatedNec
 
-            val validated = (id, password).mapN(User.safeCreate)
+            val validated =
+              (id, password, email).mapN(User.safeCreate)
 
             collapseValidated(validated)
           }

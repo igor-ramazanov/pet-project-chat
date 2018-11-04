@@ -3,7 +3,15 @@ import com.github.igorramazanov.chat.domain.User
 import simulacrum.typeclass
 
 @typeclass trait UserApi[F[_]] {
-  def find(id: String, password: String): F[Option[User]]
+  def `match`(id: User.Id,
+              email: User.Email,
+              password: User.Password): F[Option[User]]
 
-  def save(user: User): F[Either[String, Unit]]
+  def exists(email: User.Email): F[Boolean]
+
+  def save(user: User): F[Either[UserAlreadyExists.type, Unit]]
+}
+
+case object UserAlreadyExists {
+  override def toString: String = "User already exists"
 }

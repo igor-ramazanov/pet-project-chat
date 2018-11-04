@@ -1,11 +1,6 @@
 package com.github.igorramazanov.chat
 
-import com.github.igorramazanov.chat.api.PersistenceMessagesApi
-import com.github.igorramazanov.chat.api.{
-  IncomingMessagesApi,
-  KvStoreApi,
-  OutgoingMessagesApi
-}
+import com.github.igorramazanov.chat.api._
 import simulacrum.typeclass
 
 @typeclass trait InterpretersInstances[F[_]] {

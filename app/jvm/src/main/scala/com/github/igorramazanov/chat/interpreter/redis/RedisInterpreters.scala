@@ -3,22 +3,16 @@ package com.github.igorramazanov.chat.interpreter.redis
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import cats.effect.{Async, Timer}
-import com.github.igorramazanov.chat.api.PersistenceMessagesApi
+import com.github.igorramazanov.chat.api._
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import com.github.igorramazanov.chat.InterpretersInstances
-import com.github.igorramazanov.chat.api.{
-  IncomingMessagesApi,
-  KvStoreApi,
-  OutgoingMessagesApi
-}
 import scredis.{Redis, SubscriberClient}
 
 import scala.concurrent.ExecutionContext
 
 object RedisInterpreters {
-  implicit def redis[F[_]: Async: Timer](
+  def redis[F[_]: Async: Timer](host: String)(
       implicit
-      host: String,
       actorSystem: ActorSystem,
       actorMaterializer: ActorMaterializer,
       ec: ExecutionContext,

@@ -57,7 +57,9 @@ object MainComponent {
                       jsonSupport: DomainEntitiesJsonSupport) {
     import jsonSupport._
     import DomainEntitiesJsonSupport._
-    private def signIn(username: String, password: String): Callback = {
+    private def signIn(id: User.Id,
+                       email: User.Email,
+                       password: User.Password): Callback = {
       def schedulePings(s: State): Unit =
         js.timers
           .setInterval(5.seconds)(
@@ -68,14 +70,15 @@ object MainComponent {
         val host =
           org.scalajs.dom.window.location.hostname
         val port = org.scalajs.dom.window.location.port
-        val url = s"ws://$host:$port/signin?id=$username&password=$password"
+        val url =
+          s"ws://$host:$port/signin?id=${id.value}&email=${email.value}&password=${password.value}"
         val direct = $.withEffectsImpure
 
         @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
         def onopen(e: Event): Unit = {
           direct.modState { s =>
             schedulePings(s)
-            s.copy(user = Some(User.unsafeCreate(username, password)),
+            s.copy(user = Some(User.safeCreate(id, password, email)),
                    currentPage = Page.Chat)
           }
         }
@@ -90,7 +93,7 @@ object MainComponent {
                 System.err.println(
                   s"Couldn't parse message: $messageEither as GeneralChatMessage, reason: $error")
               case Right(message) =>
-                direct.modState(_.appendMessage(username, message))
+                direct.modState(_.appendMessage(id.value, message))
             }
           }
         }
@@ -111,7 +114,7 @@ object MainComponent {
           } else {
             System.err.println(
               s"""Closed. Code: ${e.code}. Reason = "${e.reason}".""")
-            signIn(username, password).discard()
+            signIn(id, email, password).discard()
           }
         }
 
@@ -129,22 +132,16 @@ object MainComponent {
       }
     }
 
-    private def signUp(username: String, password: String): Callback = {
+    private def signUp(id: User.Id,
+                       email: User.Email,
+                       password: User.Password): Callback = {
       $.modState(_.copy(isInFlight = true)) >>
         Ajax("POST", "/signup").setRequestContentTypeJsonUtf8
           .send(
-            User.unsafeCreate(username, password).toJson
+            User.safeCreate(id, password, email).toJson
           )
-          .onComplete { xhr =>
-            $.modState(_.copy(isInFlight = false)) >> (xhr.status match {
-              case 200 =>
-                signIn(username, password)
-              case _ =>
-                Callback {
-                  System.err.println(
-                    s"Sign up: failure, reason: ${Ajax.deriveErrorMessage(xhr)}")
-                }
-            })
+          .onComplete { _ =>
+            $.modState(_.copy(isInFlight = false))
           }
           .asCallback
     }

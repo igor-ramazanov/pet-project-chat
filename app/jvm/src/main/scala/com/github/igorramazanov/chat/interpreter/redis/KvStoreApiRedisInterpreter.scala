@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 import scredis.{Condition, Redis}
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.FiniteDuration
 
 class KvStoreApiRedisInterpreter[F[_]: Async: Timer] private (redis: Redis)(
     implicit ec: ExecutionContext)
@@ -31,6 +32,13 @@ class KvStoreApiRedisInterpreter[F[_]: Async: Timer] private (redis: Redis)(
       redis.set(key, value, conditionOpt = Some(Condition.NX)),
       logger.error(s"Couldn't 'setIfEmpty' value by key '$key'", _))
   }
+
+  override def setWithExpiration(key: String,
+                                 value: String,
+                                 duration: FiniteDuration): F[Unit] =
+    liftFromFuture(
+      redis.setEX(key, value, duration.toSeconds.toInt),
+      logger.error(s"Couldn't 'setWithExpiration' value by key '$key'", _))
 }
 
 object KvStoreApiRedisInterpreter {
