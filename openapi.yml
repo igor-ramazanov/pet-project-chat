@@ -17,9 +17,13 @@ components:
               password:
                 type: string
                 format: password
+              email:
+                type: string
+                format: password
             required:
             - id
             - password
+            - email
 paths:
   /signin:
     get:
