@@ -21,10 +21,19 @@ I've used the [Tagless Final](https://www.becompany.ch/en/blog/2018/06/21/tagles
 
 `sbt appJVM/docker:publishLocal` will produce the `com.github.igorramazanov/chat` Docker image.
 
-## Running
-The `com.github.igorramazanov/chat` Docker image:
-* expects: `REDIS_HOST` env var pointing to the IP address/hostname of Redis
-* exposes: `8080` port for interaction
+## Usage
+```
+Usage: pet-project-chat [options]
+
+  --help                   prints this help
+  -h, --redis-host <value>
+                           (required) host of redis used as a storage
+  -p, --verification-email-link-prefix <value>
+                           (required) prefix of the verification link sent to clients on registration, specify address by which the server is accessible, i.e. 'http://localhost:8080'
+  -l, --log-level <value>  (optional) log level, must be one of 'OFF','ERROR','WARN','INFO','DEBUG','TRACE','ALL', default is INFO
+  -t, --email-verification-timeout <value>
+                           (optional) email verification timeout, examples are '1 second', '9 days', '3 hours', '1 hour', default is '1 day'
+```
 
 ## API
 2 types of API:

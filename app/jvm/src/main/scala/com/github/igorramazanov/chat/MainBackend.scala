@@ -28,53 +28,53 @@ object MainBackend {
 
   private lazy val logger = LoggerFactory.getLogger(this.getClass)
   private val shutdownTimeout = 1.minute
-  private val emailVerificationTimeout = 1.day
-  private val redisHost: String =
-    sys.env.getOrElse("REDIS_HOST", "localhost")
-  private val emailVerificationLinkPrefix: String = {
-    val s = sys.env
-      .getOrElse("EMAIL_VERIFICATION_LINK_PREFIX", "http://10.8.0.2:8080")
-    if (s.endsWith("/")) s.init else s
-  }
-
-  setLogLevel()
-
-  private def setLogLevel(): Unit = {
-    sys.props.update("LOG_LEVEL", sys.env.getOrElse("LOG_LEVEL", "INFO"))
-  }
 
   def main(args: Array[String]): Unit = {
     type EffectMonad[+A] = Task[A]
 
-    implicit val actorSystem: ActorSystem = ActorSystem()
-    implicit val actorMaterializer: ActorMaterializer = ActorMaterializer()
-    implicit val scheduler: Scheduler = Scheduler(actorSystem.dispatcher)
-    implicit val executeToFuture: ExecuteToFuture[EffectMonad] =
-      new ExecuteToFuture[EffectMonad] {
-        override def unsafeToFuture[A](f: EffectMonad[A]): Future[A] =
-          f.runAsync
-      }
-    implicit val jsonSupport: DomainEntitiesJsonSupport =
-      DomainEntitiesCirceJsonSupport
+    Config.parser.parse(args, Config.empty).foreach { config =>
+      setLogLevel(config.logLevel)
 
-    val interpreters = RedisInterpreters.redis[EffectMonad](redisHost)
-    import interpreters._
+      implicit val actorSystem: ActorSystem = ActorSystem()
+      implicit val actorMaterializer: ActorMaterializer = ActorMaterializer()
+      implicit val scheduler: Scheduler = Scheduler(actorSystem.dispatcher)
+      implicit val executeToFuture: ExecuteToFuture[EffectMonad] =
+        new ExecuteToFuture[EffectMonad] {
+          override def unsafeToFuture[A](f: EffectMonad[A]): Future[A] =
+            f.runAsync
+        }
+      implicit val jsonSupport: DomainEntitiesJsonSupport =
+        DomainEntitiesCirceJsonSupport
 
-    val eventualBinding = Http().bindAndHandle(constructRoutes, "0.0.0.0", 8080)
-    eventualBinding.foreach(_ =>
-      logger.info("Server is listening on 8080 port"))
+      val interpreters = RedisInterpreters.redis[EffectMonad](config.redisHost)
+      import interpreters._
 
-    sys
-      .addShutdownHook {
-        Await
-          .result(eventualBinding.flatMap(_.unbind()), shutdownTimeout)
-          .discard()
-      }
-      .discard()
+      val eventualBinding =
+        Http().bindAndHandle(constructRoutes(config.emailVerificationLinkPrefix,
+                                             config.emailVerificationTimeout),
+                             "0.0.0.0",
+                             8080)
+      eventualBinding.foreach(_ =>
+        logger.info("Server is listening on 8080 port"))
+
+      sys
+        .addShutdownHook {
+          Await
+            .result(eventualBinding.flatMap(_.unbind()), shutdownTimeout)
+            .discard()
+        }
+        .discard()
+    }
   }
 
-  def constructRoutes[
+  private def setLogLevel(logLevel: String): Unit = {
+    sys.props.update("LOG_LEVEL", logLevel)
+  }
+
+  private def constructRoutes[
       F[_]: ExecuteToFuture: Effect: UserApi: EmailApi: OutgoingMessagesApi: PersistenceMessagesApi](
+      emailVerificationLinkPrefix: String,
+      emailVerificationTimeout: FiniteDuration)(
       implicit materializer: ActorMaterializer,
       jsonSupport: DomainEntitiesJsonSupport,
       IncomingApi: IncomingMessagesApi

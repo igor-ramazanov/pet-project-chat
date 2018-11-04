@@ -87,7 +87,7 @@ val jvmSettings = Seq(
       .exclude("com.typesafe.akka", s"akka-actor_${scalaBinaryVersion.value}"),
     "com.typesafe.akka" %% "akka-stream" % "2.5.12",
     "ch.qos.logback" % "logback-classic" % "1.2.3",
-//    "javax.mail" % "javax.mail-api" % "1.6.2",
+    "com.github.scopt" %% "scopt" % "3.7.0",
     "com.sun.mail" % "javax.mail" % "1.6.2",
     "com.typesafe.akka" %% "akka-slf4j" % "2.5.12" % "compile,it,test",
     "com.typesafe.akka" %% "akka-http-testkit" % "10.1.5" % "it,test",
