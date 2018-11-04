@@ -31,3 +31,7 @@ client/webapp/static/js/bundle.js.map
 client/package-lock.json
 project/project/
 project/.sbtserver
+
+
+# GMail API credentials
+credentials.json
