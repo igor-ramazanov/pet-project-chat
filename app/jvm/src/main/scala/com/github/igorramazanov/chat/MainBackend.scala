@@ -40,7 +40,7 @@ object MainBackend {
   setLogLevel()
 
   private def setLogLevel(): Unit = {
-    sys.props.update("LOG_LEVEL", sys.env.getOrElse("LOG_LEVEL", "DEBUG"))
+    sys.props.update("LOG_LEVEL", sys.env.getOrElse("LOG_LEVEL", "INFO"))
   }
 
   def main(args: Array[String]): Unit = {
