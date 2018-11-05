@@ -28,16 +28,17 @@ object Verify {
         import cats.syntax.all._
 
         val verificationEndProcess =
-          EmailApi[F].markAsVerified(emailVerificationId).flatMap {
+          EmailApi[F].checkRequestIsExpired(emailVerificationId).flatMap {
             case Right(user) =>
               UserApi[F].save(user).map {
                 case Right(_) =>
-                  logger.info(
-                    s"Successfully verified user, email: ${user.email.value}")
+                  EmailApi[F].deleteRequest(emailVerificationId).unsafeToFuture
+                  logger.debug(s"Successfully verified user: ${user.toString}")
                   complete(StatusCodes.OK)
                 case Left(UserAlreadyExists) =>
+                  EmailApi[F].deleteRequest(emailVerificationId).unsafeToFuture
                   logger.debug(
-                    s"User with such email already exists, email: ${user.email.value}")
+                    s"User with such id already exists: ${user.toString}")
                   complete(StatusCodes.Conflict)
               }
             case Left(EmailWasNotVerifiedInTime) =>

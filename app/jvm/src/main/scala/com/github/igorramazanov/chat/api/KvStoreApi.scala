@@ -4,6 +4,8 @@ import scala.concurrent.duration.FiniteDuration
 trait KvStoreApi[Key, Value, F[_]] {
   def get(key: Key): F[Option[Value]]
 
+  def del(key: Key): F[Unit]
+
   def set(key: Key, value: Value): F[Unit]
 
   def setWithExpiration(key: Key,

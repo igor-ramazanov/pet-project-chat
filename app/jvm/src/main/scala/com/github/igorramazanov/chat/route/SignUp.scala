@@ -62,7 +62,7 @@ object SignUp {
                                                  invalidSignUpRequest.toJson)))
             case Right(user) =>
               logger.debug(
-                s"Sending verification email process start: '${request.email}'")
+                s"Sending verification email process start for user: '${user.toString}'")
 
               import cats.syntax.all._
 
@@ -70,7 +70,7 @@ object SignUp {
                 UserApi[F].exists(user.id).flatMap { doesUserAlreadyExist =>
                   if (doesUserAlreadyExist) {
                     logger.debug(
-                      s"User with email ${user.email.value} already exists, conflict")
+                      s"User with the same email already exists, $user, conflict")
                     complete(StatusCodes.Conflict).pure
                   } else {
                     EmailApi[F]

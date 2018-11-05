@@ -137,21 +137,38 @@ object EmailApiToKvStoreGmailInterpreter {
       val id = Email.VerificationId(rawId)
       kvStoreApi
         .setWithExpiration(rawId, signUpRequest.toJson, duration)
-        .map(_ => id)
+        .map { _ =>
+          logger.debug(
+            s"Saved email verifying request: ${signUpRequest.toString} for ${duration
+              .toString()}, returned id: ${id.value}")
+          id
+        }
     }
 
-    override def markAsVerified(emailVerificationId: Email.VerificationId)
+    override def checkRequestIsExpired(
+        emailVerificationId: Email.VerificationId)
       : F[Either[EmailWasNotVerifiedInTime.type, User]] = {
+      val key = emailVerificationId.value
 
-      kvStoreApi.get(emailVerificationId.value).map { maybeRawSignUpRequest =>
+      kvStoreApi.get(key).map { maybeRawSignUpRequest =>
         val maybeSignUpRequest = maybeRawSignUpRequest.flatMap {
           rawSignUpRequest =>
             rawSignUpRequest.toSignUpRequest.toOption
         }
 
-        maybeSignUpRequest
+        val either = maybeSignUpRequest
           .map(_.unsafeToUser.asRight[EmailWasNotVerifiedInTime.type])
           .getOrElse(EmailWasNotVerifiedInTime.asLeft[User])
+
+        either.fold(
+          _ =>
+            logger.debug(
+              s"Email with id '${emailVerificationId.value}' was not verified in time"),
+          user =>
+            logger.debug(
+              s"Email with id '${emailVerificationId.value}' of user ${user.toString} verified in time")
+        )
+        either
       }
     }
 
@@ -163,8 +180,16 @@ object EmailApiToKvStoreGmailInterpreter {
           .send(verificationLinkPrefix)(to, emailVerificationId)
           .map(_.asRight[Throwable])
           .recover { case e => e.asLeft[Unit] },
-        logger.error(s"Couldn't send verification email to email '${to.value}'",
-                     _)
+        logger.error(s"Couldn't send verification email", _)
       )
+
+    override def deleteRequest(
+        emailVerificationId: Email.VerificationId): F[Unit] = {
+      kvStoreApi
+        .del(emailVerificationId.value)
+        .map(_ =>
+          logger.debug(
+            s"Deleted email verification request with id '${emailVerificationId.value}'"))
+    }
   }
 }

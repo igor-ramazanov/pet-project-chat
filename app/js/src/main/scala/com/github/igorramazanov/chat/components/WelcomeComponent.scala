@@ -9,7 +9,7 @@ import japgolly.scalajs.react.{
   ReactEventFromInput,
   ScalaComponent
 }
-import scalacss.DevDefaults._
+import scalacss.ProdDefaults._
 import scalacss.ScalaCssReact._
 
 @SuppressWarnings(Array("org.wartremover.warts.Any"))

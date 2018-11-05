@@ -1,5 +1,6 @@
 package com.github.igorramazanov.chat.domain
 
+import cats.Eq
 import cats.data.Validated._
 import cats.data.{NonEmptyChain, ValidatedNec}
 import cats.implicits._
@@ -24,12 +25,18 @@ object ChatMessage {
                          to = to,
                          payload = payload,
                          dateTimeUtcEpochSeconds = dateTimeEpochSeconds)
+
+    override def toString: String =
+      s"IncomingChatMessage(to=$to, payload is hidden)"
   }
   final case class GeneralChatMessage(from: String,
                                       to: String,
                                       payload: String,
                                       dateTimeUtcEpochSeconds: Long)
-      extends ChatMessage
+      extends ChatMessage {
+    override def toString: String =
+      s"GeneralChatMessage(from=$from, to=$to, unix time=$dateTimeUtcEpochSeconds, payload is hidden)"
+  }
 }
 
 sealed trait KeepAliveMessage extends DomainEntity
@@ -56,6 +63,9 @@ final case class SignUpRequest(id: String, password: String, email: String)
 
   def unsafeToUser: User =
     User.unsafeCreate(id, password, email)
+
+  override def toString: String =
+    s"SignUpRequest(id=$id, email and password are hidden)"
 }
 
 final case class InvalidSignUpRequest(validationErrors: NonEmptyChain[String])
@@ -64,13 +74,18 @@ final case class InvalidSignUpRequest(validationErrors: NonEmptyChain[String])
 final case class User private (id: User.Id,
                                password: User.Password,
                                email: User.Email)
-    extends DomainEntity
+    extends DomainEntity {
+  override def toString: String =
+    s"User(id=${id.value}, email and password are hidden)"
+}
 
 object User {
   private[domain] def apply(id: Id, password: Password, email: Email): User =
     new User(id, password, email)
 
-  final case class Id private[domain] (value: String) extends AnyVal
+  final case class Id private[domain] (value: String) extends AnyVal {
+    override def toString: String = value
+  }
 
   object Id {
     private[domain] def apply(value: String): Id = new Id(value)
@@ -92,7 +107,9 @@ object User {
     def unsafeCreate(id: String): Id = Id(id)
   }
 
-  final case class Password private[domain] (value: String) extends AnyVal
+  final case class Password private[domain] (value: String) extends AnyVal {
+    override def toString: String = s"Password(password is hidden)"
+  }
 
   object Password {
 
@@ -157,10 +174,14 @@ object User {
     def unsafeCreate(password: String): Password = Password(password)
   }
 
-  final case class Email private[domain] (value: String) extends AnyVal
+  final case class Email private[domain] (value: String) extends AnyVal {
+    override def toString: String = s"Email(email is hidden)"
+  }
 
   object Email {
-    final case class VerificationId(value: String) extends AnyVal
+    final case class VerificationId(value: String) extends AnyVal {
+      override def toString: String = s"EmailVerificationId($value)"
+    }
 
     private[domain] def apply(value: String): Email = new Email(value)
 
@@ -188,4 +209,14 @@ object User {
 
   def unsafeCreate(id: String, password: String, email: String): User =
     new User(Id(id), Password(password), Email(email))
+
+  object Implicits {
+    implicit val idEq: Eq[Id] = (x: Id, y: Id) => x.value === y.value
+    implicit val passwordEq: Eq[Password] = (x: Password, y: Password) =>
+      x.value === y.value
+    implicit val emailEq: Eq[Email] = (x: Email, y: Email) =>
+      x.value === y.value
+    implicit val userEq: Eq[User] = (x: User, y: User) =>
+      x.id === y.id && x.password === y.password && x.email === y.email
+  }
 }

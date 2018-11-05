@@ -39,6 +39,11 @@ class KvStoreApiRedisInterpreter[F[_]: Async: Timer] private (redis: Redis)(
     liftFromFuture(
       redis.setEX(key, value, duration.toSeconds.toInt),
       logger.error(s"Couldn't 'setWithExpiration' value by key '$key'", _))
+
+  override def del(key: String): F[Unit] =
+    liftFromFuture(redis.del(key),
+                   logger.error(s"Couldn't delete by key '$key'", _))
+      .map(_.discard())
 }
 
 object KvStoreApiRedisInterpreter {

@@ -34,6 +34,8 @@ object MainBackend {
 
     Config.parser.parse(args, Config.empty).foreach { config =>
       setLogLevel(config.logLevel)
+      printJvmInfo()
+      printAcceptedConfig(config)
 
       implicit val actorSystem: ActorSystem = ActorSystem()
       implicit val actorMaterializer: ActorMaterializer = ActorMaterializer()
@@ -65,6 +67,18 @@ object MainBackend {
         }
         .discard()
     }
+  }
+
+  private def printJvmInfo(): Unit = {
+    val processorsMessage =
+      s"Available processors: ${Runtime.getRuntime.availableProcessors()}."
+    val maxMemoryMessage =
+      s"Max memory: ${Runtime.getRuntime.maxMemory() / 1024 / 1024} MB"
+    logger.info(processorsMessage + " " + maxMemoryMessage)
+  }
+
+  private def printAcceptedConfig(config: Config): Unit = {
+    logger.info(s"Accepted config:\n${config.toString}")
   }
 
   private def setLogLevel(logLevel: String): Unit = {

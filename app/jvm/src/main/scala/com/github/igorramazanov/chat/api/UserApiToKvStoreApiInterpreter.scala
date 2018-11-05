@@ -2,11 +2,13 @@ package com.github.igorramazanov.chat.api
 
 import cats.Functor
 import cats.syntax.all._
-import cats.instances.string._
 import com.github.igorramazanov.chat.domain.User
+import com.github.igorramazanov.chat.domain.User.Implicits._
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
+import org.slf4j.LoggerFactory
 
 object UserApiToKvStoreApiInterpreter {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   implicit def userApiToKvStoreApi[F[_]: Functor](
       implicit kvStoreApi: KvStoreApi[String, String, F],
@@ -23,21 +25,25 @@ object UserApiToKvStoreApiInterpreter {
         } yield
           rawJson
             .flatMap { jsonString =>
-              val u = jsonString.toUser.toOption
-              println(u)
-              u
+              jsonString.toUser.toOption
             }
             .filter { u =>
-              u.password.value === password.value &&
-                u.email.value === email.value
+              u.password === password &&
+              u.email === email
             }
       }
 
       override def save(user: User): F[Either[UserAlreadyExists.type, Unit]] = {
         kvStoreApi
           .setIfEmpty(user.id.value, user.toJson)
-          .map(if (_) ().asRight[UserAlreadyExists.type]
-          else UserAlreadyExists.asLeft[Unit])
+          .map(if (_) {
+            logger.debug(s"Successfully saved if empty user: ${user.toString}")
+            ().asRight[UserAlreadyExists.type]
+          } else {
+            logger.debug(
+              s"Couldn't save if empty user: ${user.toString}, already exists")
+            UserAlreadyExists.asLeft[Unit]
+          })
       }
 
       override def exists(id: User.Id): F[Boolean] =

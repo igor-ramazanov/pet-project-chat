@@ -3,6 +3,8 @@ lazy val cleanDockerImages = taskKey[Unit]("Cleans docker images with tag:none")
 
 name := "pet-project-chat"
 
+def inDevMode = sys.props.get("dev.mode").exists(value => value.equalsIgnoreCase("true"))
+
 val compilerOptions = Seq(
   // format: off
   "-deprecation",                      // Emit warning and location for usages of deprecated APIs.
@@ -54,7 +56,7 @@ val compilerOptions = Seq(
   // format: on
 )
 
-scalaVersion in ThisBuild := "2.12.6"
+scalaVersion in ThisBuild := "2.12.7"
 version in ThisBuild := "1.0"
 
 lazy val root = project.in(file("."))
@@ -82,6 +84,7 @@ val jvmSettings = Seq(
     "com.google.apis" % "google-api-services-gmail" % "v1-rev96-1.25.0",
     "eu.timepit" %% "refined" % "0.9.2",
     "com.typesafe.akka" %% "akka-http" % "10.1.5",
+    "com.lihaoyi" %% "scalatags" % "0.6.7",
     "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5" % "compile,it,test",
     ("com.github.scredis" %% "scredis" % "2.1.7")
       .exclude("com.typesafe.akka", s"akka-actor_${scalaBinaryVersion.value}"),
@@ -157,13 +160,40 @@ lazy val app = crossProject(JSPlatform, JVMPlatform)
 lazy val appJs = app.js
 lazy val appJvm = app.jvm
   .configs(IntegrationTest)
-  .enablePlugins(JavaServerAppPackaging, AshScriptPlugin, DockerPlugin)
-  .settings((Compile / resources) ++= {
-    val js = (appJs / Compile / fastOptJS).value
-    val sourceMap = new File(js.data.absolutePath + ".map")
-    val jsDeps = new File(js.data.getParentFile.absolutePath + "/pet-project-chat-frontend-jsdeps.js")
-    Seq(
-      js.data,
-      sourceMap,
-      jsDeps)
-  })
+  .enablePlugins(JavaServerAppPackaging, AshScriptPlugin, DockerPlugin, BuildInfoPlugin)
+  .settings(
+    addFrontendResourcesToClasspath()
+  )
+  .settings(addBuildInfoKeys(): _*)
+
+def addBuildInfoKeys() = {
+  if (inDevMode) {
+    Seq(buildInfoPackage := "com.github.igorramazanov.chat",
+    buildInfoKeys ++= Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, "mode" -> "dev"))
+  } else {
+    Seq(buildInfoPackage := "com.github.igorramazanov.chat",
+    buildInfoKeys ++= Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, "mode" -> "prod"))
+  }
+}
+
+def addFrontendResourcesToClasspath() = {
+  if (inDevMode) {
+    (Compile / resources) ++= {
+      val js = (appJs / Compile / fastOptJS).value
+      val sourceMap = new File(js.data.absolutePath + ".map")
+      val jsDependencies = new File(js.data.getParentFile.absolutePath + s"/pet-project-chat-frontend-jsdeps.js")
+      Seq(
+        js.data,
+        sourceMap,
+        jsDependencies)
+    }
+  } else {
+    (Compile / resources) ++= {
+      val js = (appJs / Compile / fullOptJS).value
+      val jsDependencies = new File(js.data.getParentFile.absolutePath + s"/pet-project-chat-frontend-jsdeps.min.js")
+      Seq(
+        js.data,
+        jsDependencies)
+    }
+  }
+}

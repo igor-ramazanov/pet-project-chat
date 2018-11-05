@@ -10,8 +10,10 @@ import scala.concurrent.duration.FiniteDuration
       signUpRequest: SignUpRequest,
       duration: FiniteDuration): F[Email.VerificationId]
 
-  def markAsVerified(emailVerificationId: Email.VerificationId)
+  def checkRequestIsExpired(emailVerificationId: Email.VerificationId)
     : F[Either[EmailWasNotVerifiedInTime.type, User]]
+
+  def deleteRequest(emailVerificationId: Email.VerificationId): F[Unit]
 
   def sendVerificationEmail(verificationLinkPrefix: String)(
       to: Email,

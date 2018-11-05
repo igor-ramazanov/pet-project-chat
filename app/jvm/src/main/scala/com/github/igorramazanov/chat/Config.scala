@@ -8,7 +8,21 @@ import scala.concurrent.duration.{FiniteDuration, _}
 final case class Config(redisHost: String,
                         emailVerificationLinkPrefix: String,
                         logLevel: String,
-                        emailVerificationTimeout: FiniteDuration)
+                        emailVerificationTimeout: FiniteDuration) {
+
+  @SuppressWarnings(Array("org.wartremover.warts.Any"))
+  override def toString: String = {
+    val fields = classOf[Config].getDeclaredFields
+      .filterNot(_.isSynthetic)
+      .map(_.getName)
+    val values = this.productIterator.toSeq
+    fields
+      .zip(values)
+      .foldLeft("") {
+        case (acc, (name, value)) => acc + s"  $name = ${value.toString}\n"
+      }
+  }
+}
 
 object Config {
   val empty = Config("", "", "", Duration.Zero)
@@ -16,7 +30,7 @@ object Config {
   private implicit val readFiniteDuration: Read[FiniteDuration] =
     Read.durationRead.map { d =>
       if (d.isFinite()) {
-        FiniteDuration(d.toSeconds, SECONDS)
+        FiniteDuration(d.toUnit(d.unit).toLong, d.unit)
       } else {
         throw new ParseException("Duration should be finite", -1)
       }
