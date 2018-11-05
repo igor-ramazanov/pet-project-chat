@@ -32,6 +32,10 @@ object MessagesComponent {
       borderRadius(0.px)
     )
 
+    val hideScrollbar = style(
+      display.none
+    )
+
     val time = style(
       fontSize(14.px)
     )
@@ -39,6 +43,11 @@ object MessagesComponent {
   final case class Props(user: Option[User], messages: List[GeneralChatMessage])
 
   final class Backend($ : BackendScope[Props, Unit]) {
+    private val autoScrollToBottomRef = Ref[org.scalajs.dom.Element]
+
+    def scroll: Callback =
+      autoScrollToBottomRef.foreach(_.scrollIntoView())
+
     def render(p: Props): VdomElement = {
       def message(user: User)(m: GeneralChatMessage) = {
         val p = m.payload
@@ -75,7 +84,8 @@ object MessagesComponent {
       }
 
       val tagMods = (^.className := "list-group scroll-messages py-4") :: (Styles.messagesScroll: TagMod) :: p.user.toList
-        .flatMap(u => p.messages.map(message(u)))
+        .flatMap(u => p.messages.map(message(u))) ::: <.div()
+        .withRef(autoScrollToBottomRef) :: Nil
       <.div(tagMods: _*)
     }
   }
@@ -83,5 +93,6 @@ object MessagesComponent {
   val Component = ScalaComponent
     .builder[Props]("MessagesComponent")
     .renderBackend[Backend]
+    .componentDidUpdate(_.backend.scroll)
     .build
 }

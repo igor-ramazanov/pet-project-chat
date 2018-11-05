@@ -1,9 +1,11 @@
 package com.github.igorramazanov.chat.components
+import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.domain.ChatMessage.{
   GeneralChatMessage,
   IncomingChatMessage
 }
 import com.github.igorramazanov.chat.domain.{KeepAliveMessage, User}
+import com.github.igorramazanov.chat.json._
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{
@@ -12,17 +14,16 @@ import japgolly.scalajs.react.{
   CallbackTo,
   ScalaComponent
 }
-import com.github.igorramazanov.chat.json._
-import com.github.igorramazanov.chat.UtilsShared._
-import org.scalajs.dom.{CloseEvent, Event, MessageEvent}
 import org.scalajs.dom.raw.WebSocket
+import org.scalajs.dom.{CloseEvent, Event, MessageEvent}
 
-import scala.scalajs.js
 import scala.concurrent.duration._
+import scala.scalajs.js
+import scala.util.Random
 
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
 object MainComponent {
-  val InvalidCredentials = 1006
+  val UserAlreadyExists = 409
 
   sealed trait Page extends Product with Serializable
   object Page {
@@ -30,11 +31,34 @@ object MainComponent {
     final case object Chat extends Page
   }
 
+  final case class Alert(content: String, `type`: Alert.Type) {
+    val id: String = Random.alphanumeric.take(12).mkString("")
+  }
+
+  object Alert {
+
+    sealed trait Type extends Product with Serializable {
+      def className: String
+    }
+    object Type {
+      final case object Success extends Type {
+        override def className: String = "alert-success"
+      }
+      final case object Failure extends Type {
+        override def className: String = "alert-danger"
+      }
+      final case object Warning extends Type {
+        override def className: String = "alert-warning"
+      }
+    }
+  }
+
   final case class State(user: Option[User],
                          currentPage: Page,
                          isInFlight: Boolean,
                          ws: Option[WebSocket],
-                         messages: Map[String, List[GeneralChatMessage]]) {
+                         messages: Map[String, List[GeneralChatMessage]],
+                         alerts: List[Alert]) {
     def appendMessage(username: String, message: GeneralChatMessage): State = {
       val interlocutor =
         if (username == message.from) message.to else message.from
@@ -46,17 +70,29 @@ object MainComponent {
     def addNewContact(username: String): State = {
       copy(messages = messages + (username -> Nil))
     }
+
+    def addAlert(alert: Alert): State = copy(alerts = alert :: alerts)
+
+    def removeAlert(id: String): State =
+      copy(alerts = alerts.filterNot(_.id == id))
   }
 
   object State {
     def init: State =
-      State(None, Page.Welcoming, isInFlight = false, None, Map.empty)
+      State(
+        None,
+        Page.Welcoming,
+        isInFlight = false,
+        None,
+        Map.empty,
+        Nil
+      )
   }
 
   final class Backend($ : BackendScope[Unit, State],
                       jsonSupport: DomainEntitiesJsonSupport) {
-    import jsonSupport._
     import DomainEntitiesJsonSupport._
+    import jsonSupport._
     private def signIn(id: User.Id,
                        email: User.Email,
                        password: User.Password): Callback = {
@@ -79,7 +115,8 @@ object MainComponent {
           direct.modState { s =>
             schedulePings(s)
             s.copy(user = Some(User.safeCreate(id, password, email)),
-                   currentPage = Page.Chat)
+                   currentPage = Page.Chat,
+                   isInFlight = false)
           }
         }
 
@@ -90,33 +127,22 @@ object MainComponent {
 
             messageEither match {
               case Left(error) =>
-                System.err.println(
-                  s"Couldn't parse message: $messageEither as GeneralChatMessage, reason: $error")
+                direct.modState(_.addAlert(Alert(
+                  s"Couldn't parse message '$messageEither' to show, reason: $error",
+                  Alert.Type.Warning)))
               case Right(message) =>
                 direct.modState(_.appendMessage(id.value, message))
             }
           }
         }
 
-        @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
-        def onerror(e: Event): Unit = {
-          val msg: String =
-            e.asInstanceOf[js.Dynamic]
-              .message
-              .asInstanceOf[js.UndefOr[String]]
-              .fold(s"Error occurred!")("Error occurred: " + _)
-          System.err.println(msg)
-        }
+        def onerror(e: Event): Unit =
+          direct.modState(_.copy(isInFlight = false))
 
-        def onclose(e: CloseEvent): Unit = {
-          if (e.code == InvalidCredentials) {
-            System.err.println(s"""Invalid credentials.""")
-          } else {
-            System.err.println(
-              s"""Closed. Code: ${e.code}. Reason = "${e.reason}".""")
-            signIn(id, email, password).discard()
-          }
-        }
+        def onclose(e: CloseEvent): Unit =
+          direct.modState(
+            _.addAlert(Alert("Web socket connection failure.",
+                             Alert.Type.Failure)).copy(isInFlight = false))
 
         val ws = new WebSocket(url)
         ws.onopen = onopen
@@ -126,7 +152,7 @@ object MainComponent {
         ws
       }
 
-      connect.attempt >>= {
+      $.modState(_.copy(isInFlight = true)) >> connect.attempt >>= {
         case Right(ws) => $.modState(_.copy(ws = Some(ws)))
         case _         => Callback.empty
       }
@@ -140,8 +166,26 @@ object MainComponent {
           .send(
             User.safeCreate(id, password, email).toJson
           )
-          .onComplete { _ =>
-            $.modState(_.copy(isInFlight = false))
+          .onComplete { xhr =>
+            $.modState(_.copy(isInFlight = false)) >> {
+              xhr.status match {
+                case 200 =>
+                  $.modState(
+                    _.addAlert(Alert(
+                      s"Successfully sent verification email on ${email.value}",
+                      Alert.Type.Success)))
+                case UserAlreadyExists =>
+                  $.modState(
+                    _.addAlert(
+                      Alert(s"User with id '${id.value}' already exists",
+                            Alert.Type.Warning)))
+                case other =>
+                  $.modState(
+                    _.addAlert(
+                      Alert(s"Server returned code $other instead of 'Success'",
+                            Alert.Type.Warning)))
+              }
+            }
           }
           .asCallback
     }
@@ -160,14 +204,19 @@ object MainComponent {
     }
 
     def render(s: State): VdomElement = {
-      s.currentPage match {
-        case Page.Welcoming =>
-          WelcomeComponent.Component(
-            WelcomeComponent.Props(signIn, signUp, s.isInFlight))
-        case Page.Chat =>
-          ChatComponent.Component(
-            ChatComponent.Props(s.user, s.messages, addNewContact, send))
-      }
+      <.div(
+        s.currentPage match {
+          case Page.Welcoming =>
+            WelcomeComponent.Component(
+              WelcomeComponent.Props(signIn, signUp, s.isInFlight))
+          case Page.Chat =>
+            ChatComponent.Component(
+              ChatComponent.Props(s.user, s.messages, addNewContact, send))
+        },
+        AlertsComponent.Component(
+          AlertsComponent.Props(s.alerts, id => $.modState(_.removeAlert(id))))
+      )
+
     }
   }
 

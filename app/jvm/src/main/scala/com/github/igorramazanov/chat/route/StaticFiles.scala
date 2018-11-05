@@ -2,6 +2,7 @@ package com.github.igorramazanov.chat.route
 import akka.http.scaladsl.model.{HttpCharsets, HttpEntity, MediaTypes}
 import akka.http.scaladsl.server.Route
 import com.github.igorramazanov.chat.BuildInfo
+
 object StaticFiles {
   def createRoute: Route = {
     import akka.http.scaladsl.server.Directives._
@@ -45,6 +46,16 @@ object StaticFiles {
           href := "https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css",
           attr("integrity") := "sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO",
           attr("crossorigin") := "anonymous"
+        ),
+        tag("style")(
+          """
+            | ::-webkit-scrollbar {
+            |  display: none
+            | }
+            | html {
+            |  overflow: -moz-scrollbars-none;
+            | }
+          """.stripMargin
         )
       ),
       body(

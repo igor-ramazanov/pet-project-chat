@@ -35,9 +35,6 @@ object SignIn {
     get {
       parameters(("id", "email", "password")) {
         (idRaw, emailRaw, passwordRaw) =>
-        println(idRaw)
-        println(emailRaw)
-        println(passwordRaw)
           (for {
             id <- NonEmptyString
               .from(idRaw)
