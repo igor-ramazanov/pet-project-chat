@@ -16,7 +16,8 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
       jsonString: String): Either[NonEmptyChain[String], A] =
     decode(jsonString).leftMap(error => NonEmptyChain(error.getMessage))
 
-  override implicit def userJsonApi: JsonApi[User] = new JsonApi[User] {
+  //TODO replace by compile-time derivation/macro/reflection
+  override implicit val userJsonApi: JsonApi[User] = new JsonApi[User] {
 
     private def collapseValidated[T](
         validationAndParsingResult: ValidatedNec[DecodingFailure,
@@ -42,7 +43,6 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
         identity
       )
 
-    //TODO replace by compile-time derivation/macro/reflection
     override def write(entity: User): String =
       Json
         .obj(
@@ -52,7 +52,6 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
         )
         .noSpaces
 
-    //TODO replace by compile-time derivation/macro/reflection
     override def read(
         jsonString: String): Either[NonEmptyChain[String], User] = {
       {
@@ -82,7 +81,7 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
       }
     }
   }
-  override implicit def incomingChatMessageJsonApi
+  override implicit val incomingChatMessageJsonApi
     : JsonApi[ChatMessage.IncomingChatMessage] =
     new JsonApi[ChatMessage.IncomingChatMessage] {
       implicit val decoder: Decoder[ChatMessage.IncomingChatMessage] =
@@ -97,7 +96,7 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
         : Either[NonEmptyChain[String], ChatMessage.IncomingChatMessage] =
         decodeWithoutValidation(jsonString)
     }
-  override implicit def generalChatMessageJsonApi
+  override implicit val generalChatMessageJsonApi
     : JsonApi[ChatMessage.GeneralChatMessage] =
     new JsonApi[ChatMessage.GeneralChatMessage] {
       implicit val decoder: Decoder[ChatMessage.GeneralChatMessage] =
@@ -112,7 +111,7 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
         decodeWithoutValidation(jsonString)
     }
 
-  override implicit def signUpRequestJsonApi: JsonApi[SignUpRequest] =
+  override implicit val signUpRequestJsonApi: JsonApi[SignUpRequest] =
     new JsonApi[SignUpRequest] {
       implicit val decoder: Decoder[SignUpRequest] =
         deriveDecoder
@@ -125,7 +124,7 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
         decodeWithoutValidation(jsonString)
     }
 
-  override implicit def invalidSignUpRequestJsonApi
+  override implicit val invalidSignUpRequestJsonApi
     : JsonApi[InvalidSignUpRequest] = new JsonApi[InvalidSignUpRequest] {
     implicit val decoder: Decoder[InvalidSignUpRequest] =
       (c: HCursor) =>
@@ -149,4 +148,13 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
       : Either[NonEmptyChain[String], InvalidSignUpRequest] =
       decodeWithoutValidation(jsonString)
   }
+
+  override implicit val validSignUpRequestJsonApi: JsonApi[ValidSignUpRequest] =
+    new JsonApi[ValidSignUpRequest] {
+      override def write(entity: ValidSignUpRequest): String =
+        userJsonApi.write(entity.asUser)
+      override def read(jsonString: String)
+        : Either[NonEmptyChain[String], ValidSignUpRequest] =
+        userJsonApi.read(jsonString).map(ValidSignUpRequest.fromUser)
+    }
 }

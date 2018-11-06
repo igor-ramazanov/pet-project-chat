@@ -5,10 +5,16 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.{FromRequestUnmarshaller, Unmarshaller}
 import akka.stream.Materializer
 import cats.effect.Effect
+import cats.syntax.all._
+import com.github.igorramazanov.chat.HttpStatusCodes
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
 import com.github.igorramazanov.chat.api._
-import com.github.igorramazanov.chat.domain.{SignUpRequest, User}
+import com.github.igorramazanov.chat.domain.{
+  SignUpRequest,
+  User,
+  ValidSignUpRequest
+}
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import org.slf4j.LoggerFactory
 
@@ -21,6 +27,7 @@ object SignUp {
   private val messageStrictTimeout = 1.minute
 
   def createRoute[F[_]: UserApi: ExecuteToFuture: Effect: EmailApi](
+      gmailVerificationEmailSender: Option[User.Email],
       emailVerificationLinkPrefix: String,
       emailVerificationTimeout: FiniteDuration)(
       implicit jsonSupport: DomainEntitiesJsonSupport): Route = {
@@ -54,48 +61,29 @@ object SignUp {
     path("signup") {
       post {
         entity(as[SignUpRequest]) { request =>
-          request.validateToUser match {
+          request.validate match {
             case Left(invalidSignUpRequest) =>
               complete(
                 HttpResponse(status = StatusCodes.BadRequest,
                              entity = HttpEntity(MediaTypes.`application/json`,
                                                  invalidSignUpRequest.toJson)))
-            case Right(user) =>
+            case Right(validSignUpRequest) =>
               logger.debug(
-                s"Sending verification email process start for user: '${user.toString}'")
+                s"Sending verification email process start for user: '${validSignUpRequest.toString}'")
 
-              import cats.syntax.all._
-
-              val verificationStartEffect =
-                UserApi[F].exists(user.id).flatMap { doesUserAlreadyExist =>
-                  if (doesUserAlreadyExist) {
-                    logger.debug(
-                      s"User with the same email already exists, $user, conflict")
-                    complete(StatusCodes.Conflict).pure
-                  } else {
-                    EmailApi[F]
-                      .saveRequestWithExpiration(request,
-                                                 emailVerificationTimeout)
-                      .flatMap(
-                        EmailApi[F]
-                          .sendVerificationEmail(emailVerificationLinkPrefix)(
-                            User.Email.unsafeCreate(request.email),
-                            _))
-                      .map {
-                        case Right(_) =>
-                          logger.debug(
-                            s"Successfully sent verification email, email: '${request.email}'")
-                          complete(StatusCodes.OK)
-                        case Left(exception) =>
-                          logger.error(
-                            s"Couldn't send verification email: '${request.email}', reason: ${exception.getMessage}",
-                            exception)
-                          complete(StatusCodes.InternalServerError)
-                      }
+              val signUpEffect =
+                gmailVerificationEmailSender
+                  .map { gmail =>
+                    startEmailVerification(validSignUpRequest,
+                                           gmail,
+                                           emailVerificationLinkPrefix,
+                                           emailVerificationTimeout)
                   }
-                }
+                  .getOrElse {
+                    signUpWithoutEmailVerification(validSignUpRequest)
+                  }
 
-              onComplete(verificationStartEffect.unsafeToFuture) {
+              onComplete(signUpEffect.unsafeToFuture) {
                 case Success(responseRoute) => responseRoute
                 case Failure(exception) =>
                   logger.error(
@@ -105,6 +93,57 @@ object SignUp {
               }
           }
         }
+      }
+    }
+  }
+
+  private def signUpWithoutEmailVerification[
+      F[_]: UserApi: ExecuteToFuture: Effect: EmailApi](
+      validSignUpRequest: ValidSignUpRequest) = {
+    UserApi[F].save(validSignUpRequest.asUser).map {
+      case Right(_) =>
+        logger.debug(
+          s"Successfully registered new user ${validSignUpRequest.asUser}")
+        complete(StatusCode.int2StatusCode(HttpStatusCodes.SignedUp))
+      case Left(UserAlreadyExists) =>
+        logger.debug(
+          s"User with the same email already exists, ${validSignUpRequest.toString}, conflict")
+        complete(StatusCode.int2StatusCode(HttpStatusCodes.UserAlreadyExists))
+    }
+  }
+
+  private def startEmailVerification[
+      F[_]: UserApi: ExecuteToFuture: Effect: EmailApi](
+      request: ValidSignUpRequest,
+      gmailVerificationEmailSender: User.Email,
+      emailVerificationLinkPrefix: String,
+      emailVerificationTimeout: FiniteDuration) = {
+    UserApi[F].exists(request.id).flatMap { doesUserAlreadyExist =>
+      if (doesUserAlreadyExist) {
+        logger.debug(
+          s"User with the same email already exists, $request, conflict")
+        complete(StatusCode.int2StatusCode(HttpStatusCodes.UserAlreadyExists)).pure
+      } else {
+        EmailApi[F]
+          .saveRequestWithExpiration(request, emailVerificationTimeout)
+          .flatMap(
+            EmailApi[F]
+              .sendVerificationEmail(emailVerificationLinkPrefix)(
+                request.email,
+                gmailVerificationEmailSender,
+                _))
+          .map {
+            case Right(_) =>
+              logger.debug(
+                s"Successfully sent verification email, email: '${request.email}'")
+              complete(StatusCode.int2StatusCode(
+                HttpStatusCodes.SuccessfullySentVerificationEmail))
+            case Left(exception) =>
+              logger.error(
+                s"Couldn't send verification email: '${request.email}', reason: ${exception.getMessage}",
+                exception)
+              complete(StatusCodes.InternalServerError)
+          }
       }
     }
   }

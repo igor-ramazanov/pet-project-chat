@@ -10,6 +10,7 @@ import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.api.UserApiToKvStoreApiInterpreter._
 import com.github.igorramazanov.chat.api._
+import com.github.igorramazanov.chat.domain.User.Email
 import com.github.igorramazanov.chat.interpreter.gmail.EmailApiToKvStoreGmailInterpreter._
 import com.github.igorramazanov.chat.interpreter.redis.RedisInterpreters
 import com.github.igorramazanov.chat.json.{
@@ -52,10 +53,12 @@ object MainBackend {
       import interpreters._
 
       val eventualBinding =
-        Http().bindAndHandle(constructRoutes(config.emailVerificationLinkPrefix,
-                                             config.emailVerificationTimeout),
-                             "0.0.0.0",
-                             8080)
+        Http().bindAndHandle(
+          constructRoutes(config.gmailVerificationEmailSender,
+                          config.emailVerificationLinkPrefix,
+                          config.emailVerificationTimeout),
+          "0.0.0.0",
+          8080)
       eventualBinding.foreach(_ =>
         logger.info("Server is listening on 8080 port"))
 
@@ -87,16 +90,24 @@ object MainBackend {
 
   private def constructRoutes[
       F[_]: ExecuteToFuture: Effect: UserApi: EmailApi: OutgoingMessagesApi: PersistenceMessagesApi](
+      gmailVerificationEmailSender: Option[Email],
       emailVerificationLinkPrefix: String,
       emailVerificationTimeout: FiniteDuration)(
       implicit materializer: ActorMaterializer,
       jsonSupport: DomainEntitiesJsonSupport,
       IncomingApi: IncomingMessagesApi
   ): Route = {
-    SignIn.createRoute ~
-      SignUp.createRoute(emailVerificationLinkPrefix, emailVerificationTimeout) ~
-      Verify.createRoute(emailVerificationTimeout) ~
+    val routesWithoutVerify = SignIn.createRoute ~
+      SignUp.createRoute(gmailVerificationEmailSender,
+                         emailVerificationLinkPrefix,
+                         emailVerificationTimeout) ~
       Status.createRoute ~
       StaticFiles.createRoute
+
+    Verify
+      .createRoute(gmailVerificationEmailSender.nonEmpty,
+                   emailVerificationTimeout)
+      .map(_ ~ routesWithoutVerify)
+      .getOrElse(routesWithoutVerify)
   }
 }

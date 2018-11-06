@@ -13,7 +13,7 @@ import com.github.igorramazanov.chat.api.{
   KvStoreApi
 }
 import com.github.igorramazanov.chat.domain.User.Email
-import com.github.igorramazanov.chat.domain.{SignUpRequest, User}
+import com.github.igorramazanov.chat.domain.ValidSignUpRequest
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import org.slf4j.LoggerFactory
 
@@ -48,7 +48,7 @@ object EmailApiToKvStoreGmailInterpreter {
     import javax.mail.{MessagingException, Session}
 
     private val APPLICATION_NAME =
-      "Gmail API Igor Ramazanov pet-project-chat email verification"
+      "Gmail API pet-project-chat email verification"
     private val userId = "me"
     private val TOKENS_DIRECTORY_PATH = "tokens"
     private val SCOPES =
@@ -62,7 +62,6 @@ object EmailApiToKvStoreGmailInterpreter {
                                             getCredentials(HTTP_TRANSPORT))
       .setApplicationName(APPLICATION_NAME)
       .build
-    private val from = "themirrortruth@gmail.com"
     private val subject = "Email verification"
 
     @throws[Throwable]
@@ -86,6 +85,7 @@ object EmailApiToKvStoreGmailInterpreter {
 
     def send(verificationLinkPrefix: String)(
         to: Email,
+        from: Email,
         emailVerificationId: Email.VerificationId)(
         implicit executionContext: ExecutionContext): Future[Unit] =
       Future {
@@ -95,6 +95,7 @@ object EmailApiToKvStoreGmailInterpreter {
             .messages()
             .send(userId,
                   createMessage(verificationLinkPrefix)(to,
+                                                        from,
                                                         emailVerificationId))
             .execute()
             .discard()
@@ -104,10 +105,11 @@ object EmailApiToKvStoreGmailInterpreter {
     @throws[IOException]
     private def createMessage(verificationLinkPrefix: String)(
         to: Email,
+        from: Email,
         emailVerificationId: Email.VerificationId): Message = {
       val session = Session.getDefaultInstance(new Properties(), null)
       val email = new MimeMessage(session)
-      email.setFrom(new InternetAddress(from))
+      email.setFrom(new InternetAddress(from.value))
       email.addRecipient(javax.mail.Message.RecipientType.TO,
                          new InternetAddress(to.value))
       email.setSubject(subject)
@@ -131,7 +133,7 @@ object EmailApiToKvStoreGmailInterpreter {
     import jsonSupport._
 
     override def saveRequestWithExpiration(
-        signUpRequest: SignUpRequest,
+        signUpRequest: ValidSignUpRequest,
         duration: FiniteDuration): F[Email.VerificationId] = {
       val rawId = java.util.UUID.randomUUID().toString
       val id = Email.VerificationId(rawId)
@@ -147,18 +149,18 @@ object EmailApiToKvStoreGmailInterpreter {
 
     override def checkRequestIsExpired(
         emailVerificationId: Email.VerificationId)
-      : F[Either[EmailWasNotVerifiedInTime.type, User]] = {
+      : F[Either[EmailWasNotVerifiedInTime.type, ValidSignUpRequest]] = {
       val key = emailVerificationId.value
 
       kvStoreApi.get(key).map { maybeRawSignUpRequest =>
         val maybeSignUpRequest = maybeRawSignUpRequest.flatMap {
           rawSignUpRequest =>
-            rawSignUpRequest.toSignUpRequest.toOption
+            rawSignUpRequest.toValidSignUpRequest.toOption
         }
 
         val either = maybeSignUpRequest
-          .map(_.unsafeToUser.asRight[EmailWasNotVerifiedInTime.type])
-          .getOrElse(EmailWasNotVerifiedInTime.asLeft[User])
+          .map(_.asRight[EmailWasNotVerifiedInTime.type])
+          .getOrElse(EmailWasNotVerifiedInTime.asLeft[ValidSignUpRequest])
 
         either.fold(
           _ =>
@@ -174,10 +176,11 @@ object EmailApiToKvStoreGmailInterpreter {
 
     override def sendVerificationEmail(verificationLinkPrefix: String)(
         to: Email,
+        from: Email,
         emailVerificationId: Email.VerificationId): F[Either[Throwable, Unit]] =
       liftFromFuture(
         GmailApi
-          .send(verificationLinkPrefix)(to, emailVerificationId)
+          .send(verificationLinkPrefix)(to, from, emailVerificationId)
           .map(_.asRight[Throwable])
           .recover { case e => e.asLeft[Unit] },
         logger.error(s"Couldn't send verification email", _)

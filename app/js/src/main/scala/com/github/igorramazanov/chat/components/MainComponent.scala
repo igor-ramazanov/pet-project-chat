@@ -1,4 +1,5 @@
 package com.github.igorramazanov.chat.components
+import com.github.igorramazanov.chat.HttpStatusCodes
 import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.domain.ChatMessage.{
   GeneralChatMessage,
@@ -23,7 +24,6 @@ import scala.util.Random
 
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
 object MainComponent {
-  val UserAlreadyExists = 409
 
   sealed trait Page extends Product with Serializable
   object Page {
@@ -169,21 +169,22 @@ object MainComponent {
           .onComplete { xhr =>
             $.modState(_.copy(isInFlight = false)) >> {
               xhr.status match {
-                case 200 =>
+                case HttpStatusCodes.SignedUp =>
+                  signIn(id, email, password)
+                case HttpStatusCodes.SuccessfullySentVerificationEmail =>
                   $.modState(
                     _.addAlert(Alert(
                       s"Successfully sent verification email on ${email.value}",
                       Alert.Type.Success)))
-                case UserAlreadyExists =>
+                case HttpStatusCodes.UserAlreadyExists =>
                   $.modState(
                     _.addAlert(
                       Alert(s"User with id '${id.value}' already exists",
                             Alert.Type.Warning)))
                 case other =>
-                  $.modState(
-                    _.addAlert(
-                      Alert(s"Server returned code $other instead of 'Success'",
-                            Alert.Type.Warning)))
+                  $.modState(_.addAlert(Alert(
+                    s"Server returned code $other which is not handled by the client app",
+                    Alert.Type.Warning)))
               }
             }
           }

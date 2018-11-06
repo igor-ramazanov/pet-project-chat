@@ -51,15 +51,15 @@ object KeepAliveMessage {
 
 final case class SignUpRequest(id: String, password: String, email: String)
     extends DomainEntity {
-  import cats.syntax.either._
 
-  def validateToUser: Either[InvalidSignUpRequest, User] =
-    User
-      .safeCreate(id, password, email)
-      .toEither
+  def validate: Either[InvalidSignUpRequest, ValidSignUpRequest] =
+    (User.Id.validate(id),
+     User.Password.validate(password),
+     User.Email.validate(email))
+      .mapN((id, password, email) => ValidSignUpRequest(id, password, email))
       .leftMap(validationErrors =>
-        InvalidSignUpRequest(validationErrors.flatMap(e =>
-          NonEmptyChain(e.errorMessage))))
+        InvalidSignUpRequest(validationErrors.map(_.errorMessage)))
+      .toEither
 
   def unsafeToUser: User =
     User.unsafeCreate(id, password, email)
@@ -70,6 +70,31 @@ final case class SignUpRequest(id: String, password: String, email: String)
 
 final case class InvalidSignUpRequest(validationErrors: NonEmptyChain[String])
     extends DomainEntity
+
+final case class ValidSignUpRequest private (id: User.Id,
+                                             password: User.Password,
+                                             email: User.Email)
+    extends DomainEntity {
+  def asUser: User = User.safeCreate(id, password, email)
+
+  override def toString: String =
+    s"ValidSignUpRequest(id=${id.value}, email and password are hidden)"
+}
+
+object ValidSignUpRequest {
+  private[domain] def apply(id: User.Id,
+                            password: User.Password,
+                            email: User.Email): ValidSignUpRequest =
+    new ValidSignUpRequest(id, password, email)
+
+  def unsafeCreate(id: String,
+                   password: String,
+                   email: String): ValidSignUpRequest =
+    ValidSignUpRequest(User.Id(id), User.Password(password), User.Email(email))
+
+  def fromUser(user: User): ValidSignUpRequest =
+    ValidSignUpRequest(user.id, user.password, user.email)
+}
 
 final case class User private (id: User.Id,
                                password: User.Password,

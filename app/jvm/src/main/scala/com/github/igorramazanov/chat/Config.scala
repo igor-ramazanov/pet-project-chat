@@ -1,14 +1,17 @@
 package com.github.igorramazanov.chat
 import java.text.ParseException
 
+import com.github.igorramazanov.chat.domain.User
 import scopt.{OptionParser, Read}
+import cats.syntax.option._
 
 import scala.concurrent.duration.{FiniteDuration, _}
 
 final case class Config(redisHost: String,
                         emailVerificationLinkPrefix: String,
                         logLevel: String,
-                        emailVerificationTimeout: FiniteDuration) {
+                        emailVerificationTimeout: FiniteDuration,
+                        gmailVerificationEmailSender: Option[User.Email]) {
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   override def toString: String = {
@@ -25,7 +28,7 @@ final case class Config(redisHost: String,
 }
 
 object Config {
-  val empty = Config("", "", "", Duration.Zero)
+  val empty = Config("", "", "", Duration.Zero, None)
 
   private implicit val readFiniteDuration: Read[FiniteDuration] =
     Read.durationRead.map { d =>
@@ -35,6 +38,19 @@ object Config {
         throw new ParseException("Duration should be finite", -1)
       }
     }
+
+  private implicit val readEmail: Read[User.Email] =
+    Read.stringRead.map(
+      s =>
+        User.Email
+          .validate(s)
+          .fold(
+            validationErrors =>
+              throw new ParseException(
+                s"Couldn't validate email from string: $s. Reasons: ${validationErrors.toString}",
+                -1),
+            identity
+        ))
 
   val parser: OptionParser[Config] =
     new OptionParser[Config]("pet-project-chat") {
@@ -55,5 +71,8 @@ object Config {
           () => 1.day) action { (x, c) =>
         c.copy(emailVerificationTimeout = x)
       } text "(optional) email verification timeout, examples are '1 second', '9 days', '3 hours', '1 hour', default is '1 day'"
+      opt[User.Email]('e', "gmail-verification-email-sender") action { (x, c) =>
+        c.copy(gmailVerificationEmailSender = x.some)
+      } text "(optional) gmail address of verification email sender, if not provided then email verification on sign up be disabled"
     }
 }
