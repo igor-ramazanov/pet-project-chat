@@ -4,8 +4,6 @@ Personal pet-project I am working on for self-education purposes.
 
 The project is a simple real-time chat on websockets.
 
-**The project still in the active development phase and has lack of some serious features. Also, this README doesn't match to the current state of the development**
-
 **Technologies used:**
 1. [Cats](https://typelevel.org/cats/) - for writing abstract code and as a standardized interface between other libraries
 2. [Cats Effect](https://typelevel.org/cats-effect/) - for abstracting over concrete IO monad
