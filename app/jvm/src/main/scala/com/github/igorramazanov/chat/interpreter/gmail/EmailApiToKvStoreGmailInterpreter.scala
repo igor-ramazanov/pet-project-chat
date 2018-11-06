@@ -32,7 +32,7 @@ object EmailApiToKvStoreGmailInterpreter {
     import java.util.Collections
 
     import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
-    import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
+    import com.google.api.client.extensions.jetty.auth.oauth2.CustomLocalServerReceiver
     import com.google.api.client.googleapis.auth.oauth2.{
       GoogleAuthorizationCodeFlow,
       GoogleClientSecrets
@@ -56,7 +56,7 @@ object EmailApiToKvStoreGmailInterpreter {
     private val CREDENTIALS_FILE_PATH = "/credentials.json"
     private val JSON_FACTORY = JacksonFactory.getDefaultInstance
     private val HTTP_TRANSPORT =
-      GoogleNetHttpTransport.newTrustedTransport
+      GoogleNetHttpTransport.newTrustedTransport()
     private val service = new Gmail.Builder(HTTP_TRANSPORT,
                                             JSON_FACTORY,
                                             getCredentials(HTTP_TRANSPORT))
@@ -79,7 +79,9 @@ object EmailApiToKvStoreGmailInterpreter {
           .setAccessType("offline")
           .build
       val receiver =
-        new LocalServerReceiver.Builder().setPort(8888).build
+        new CustomLocalServerReceiver.Builder()
+          .setPort(8888)
+          .build
       new AuthorizationCodeInstalledApp(flow, receiver).authorize("user")
     }
 

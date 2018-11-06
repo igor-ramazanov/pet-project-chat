@@ -110,12 +110,6 @@ val jvmSettings = Seq(
     (Docker / publishLocal).value
     cleanDockerImages.value
   },
-  (IntegrationTest / test) := {
-    (Docker / publishLocal).value
-    cleanDockerImages.value
-    (IntegrationTest / test).value
-  },
-  (IntegrationTest / scalacOptions) --= Seq("-Xfatal-warnings", "-deprecation"),
   Compile / scalacOptions := ("-Xplugin:" + (baseDirectory.in(root).value / ("paradise_" + scalaVersion.value + "-2.1.1.jar")).absolutePath) +: compilerOptions,
   (Compile / console / scalacOptions) --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings")
 ) ++ Defaults.itSettings
@@ -159,7 +153,6 @@ lazy val app = crossProject(JSPlatform, JVMPlatform)
 
 lazy val appJs = app.js
 lazy val appJvm = app.jvm
-  .configs(IntegrationTest)
   .enablePlugins(JavaServerAppPackaging, AshScriptPlugin, DockerPlugin, BuildInfoPlugin)
   .settings(
     addFrontendResourcesToClasspath()

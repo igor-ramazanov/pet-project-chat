@@ -28,7 +28,7 @@ object SignUp {
 
   def createRoute[F[_]: UserApi: ExecuteToFuture: Effect: EmailApi](
       gmailVerificationEmailSender: Option[User.Email],
-      emailVerificationLinkPrefix: String,
+      emailVerificationLinkPrefix: Option[String],
       emailVerificationTimeout: FiniteDuration)(
       implicit jsonSupport: DomainEntitiesJsonSupport): Route = {
     import DomainEntitiesJsonSupport._
@@ -58,39 +58,44 @@ object SignUp {
         }
       }
 
-    path("signup") {
-      post {
-        entity(as[SignUpRequest]) { request =>
-          request.validate match {
-            case Left(invalidSignUpRequest) =>
-              complete(
-                HttpResponse(status = StatusCodes.BadRequest,
-                             entity = HttpEntity(MediaTypes.`application/json`,
-                                                 invalidSignUpRequest.toJson)))
-            case Right(validSignUpRequest) =>
-              logger.debug(
-                s"Sending verification email process start for user: '${validSignUpRequest.toString}'")
+    withRequestTimeout(5.minutes) {
+      path("signup") {
+        post {
+          entity(as[SignUpRequest]) { request =>
+            request.validate match {
+              case Left(invalidSignUpRequest) =>
+                complete(
+                  HttpResponse(status = StatusCodes.BadRequest,
+                               entity =
+                                 HttpEntity(MediaTypes.`application/json`,
+                                            invalidSignUpRequest.toJson)))
+              case Right(validSignUpRequest) =>
+                logger.debug(
+                  s"Sending verification email process start for user: '${validSignUpRequest.toString}'")
 
-              val signUpEffect =
-                gmailVerificationEmailSender
-                  .map { gmail =>
+                val signUpEffect = {
+                  for {
+                    gmail <- gmailVerificationEmailSender
+                    linkPrefix <- emailVerificationLinkPrefix
+                  } yield {
                     startEmailVerification(validSignUpRequest,
                                            gmail,
-                                           emailVerificationLinkPrefix,
+                                           linkPrefix,
                                            emailVerificationTimeout)
                   }
-                  .getOrElse {
-                    signUpWithoutEmailVerification(validSignUpRequest)
-                  }
+                } getOrElse {
+                  signUpWithoutEmailVerification(validSignUpRequest)
+                }
 
-              onComplete(signUpEffect.unsafeToFuture) {
-                case Success(responseRoute) => responseRoute
-                case Failure(exception) =>
-                  logger.error(
-                    s"Some error occurred during email verification start process: '${request.email}', reason: ${exception.getMessage}",
-                    exception)
-                  complete(StatusCodes.InternalServerError)
-              }
+                onComplete(signUpEffect.unsafeToFuture) {
+                  case Success(responseRoute) => responseRoute
+                  case Failure(exception) =>
+                    logger.error(
+                      s"Some error occurred during email verification start process: '${request.email}', reason: ${exception.getMessage}",
+                      exception)
+                    complete(StatusCodes.InternalServerError)
+                }
+            }
           }
         }
       }

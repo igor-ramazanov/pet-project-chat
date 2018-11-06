@@ -1,0 +1,11 @@
+version: "3"
+services:
+  redis:
+    image: redis
+  chat:
+    image: com.github.igorramazanov/chat
+    command: "-h redis -p http://localhost:8080 -e FIX_ME@gmail.com"
+    depends_on: [redis]
+    ports:
+    - 8888:8888
+    - 8080:8080

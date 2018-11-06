@@ -91,7 +91,7 @@ object MainBackend {
   private def constructRoutes[
       F[_]: ExecuteToFuture: Effect: UserApi: EmailApi: OutgoingMessagesApi: PersistenceMessagesApi](
       gmailVerificationEmailSender: Option[Email],
-      emailVerificationLinkPrefix: String,
+      emailVerificationLinkPrefix: Option[String],
       emailVerificationTimeout: FiniteDuration)(
       implicit materializer: ActorMaterializer,
       jsonSupport: DomainEntitiesJsonSupport,
@@ -105,8 +105,9 @@ object MainBackend {
       StaticFiles.createRoute
 
     Verify
-      .createRoute(gmailVerificationEmailSender.nonEmpty,
-                   emailVerificationTimeout)
+      .createRoute(
+        gmailVerificationEmailSender.nonEmpty && emailVerificationLinkPrefix.nonEmpty,
+        emailVerificationTimeout)
       .map(_ ~ routesWithoutVerify)
       .getOrElse(routesWithoutVerify)
   }
