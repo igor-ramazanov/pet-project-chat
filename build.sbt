@@ -85,18 +85,14 @@ val jvmSettings = Seq(
     "eu.timepit" %% "refined" % "0.9.2",
     "com.typesafe.akka" %% "akka-http" % "10.1.5",
     "com.lihaoyi" %% "scalatags" % "0.6.7",
-    "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5" % "compile,it,test",
+    "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5",
     ("com.github.scredis" %% "scredis" % "2.1.7")
       .exclude("com.typesafe.akka", s"akka-actor_${scalaBinaryVersion.value}"),
     "com.typesafe.akka" %% "akka-stream" % "2.5.12",
     "ch.qos.logback" % "logback-classic" % "1.2.3",
     "com.github.scopt" %% "scopt" % "3.7.0",
     "com.sun.mail" % "javax.mail" % "1.6.2",
-    "com.typesafe.akka" %% "akka-slf4j" % "2.5.12" % "compile,it,test",
-    "com.typesafe.akka" %% "akka-http-testkit" % "10.1.5" % "it,test",
-    "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
-    "org.scalacheck" %% "scalacheck" % "1.14.0" % "it,test",
-    "com.dimafeng" %% "testcontainers-scala" % "0.20.0" % "it,test"
+    "com.typesafe.akka" %% "akka-slf4j" % "2.5.12"
   ),
   (Docker / packageName) := "com.github.igorramazanov/chat",
   dockerUpdateLatest:= true,
@@ -112,7 +108,7 @@ val jvmSettings = Seq(
   },
   Compile / scalacOptions := ("-Xplugin:" + (baseDirectory.in(root).value / ("paradise_" + scalaVersion.value + "-2.1.1.jar")).absolutePath) +: compilerOptions,
   (Compile / console / scalacOptions) --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings")
-) ++ Defaults.itSettings
+)
 
 val jsSettings = Seq(
   name := "pet-project-chat-frontend",
