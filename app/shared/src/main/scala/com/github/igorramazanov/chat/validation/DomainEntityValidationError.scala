@@ -1,4 +1,5 @@
 package com.github.igorramazanov.chat.validation
+import cats.Show
 import cats.data.ValidatedNec
 
 sealed trait DomainEntityValidationError extends Product with Serializable {
@@ -7,6 +8,10 @@ sealed trait DomainEntityValidationError extends Product with Serializable {
 
 object DomainEntityValidationError {
   type ValidationResult[A] = ValidatedNec[DomainEntityValidationError, A]
+
+  implicit val show = new Show[DomainEntityValidationError] {
+    override def show(t: DomainEntityValidationError): String = t.errorMessage
+  }
 }
 
 sealed trait IdValidationError extends DomainEntityValidationError

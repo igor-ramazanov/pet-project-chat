@@ -102,7 +102,8 @@ object MainBackend {
                          emailVerificationLinkPrefix,
                          emailVerificationTimeout) ~
       Status.createRoute ~
-      StaticFiles.createRoute
+      StaticFiles.createRoute ~
+      UserExists.createRoute
 
     Verify
       .createRoute(

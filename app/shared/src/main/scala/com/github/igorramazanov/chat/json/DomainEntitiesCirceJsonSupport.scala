@@ -4,111 +4,142 @@ import cats.data.Validated._
 import cats.data.{NonEmptyChain, ValidatedNec}
 import cats.implicits._
 import com.github.igorramazanov.chat.domain._
-import com.github.igorramazanov.chat.validation.DomainEntityValidationError.ValidationResult
+import com.github.igorramazanov.chat.validation.DomainEntityValidationError
 import io.circe._
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
-import io.circe.parser.{decode, parse}
+import io.circe.parser.parse
 import io.circe.syntax._
 
 object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
+  private implicit val idEncoder: Encoder[User.Id] = new Encoder[User.Id] {
+    override def apply(a: User.Id): Json = Json.fromString(a.value)
+  }
+  private implicit val passwordEncoder: Encoder[User.Password] =
+    new Encoder[User.Password] {
+      override def apply(a: User.Password): Json = Json.fromString(a.value)
+    }
+  private implicit val emailEncoder: Encoder[User.Email] =
+    new Encoder[User.Email] {
+      override def apply(a: User.Email): Json = Json.fromString(a.value)
+    }
 
-  private def decodeWithoutValidation[A: Decoder](
-      jsonString: String): Either[NonEmptyChain[String], A] =
-    decode(jsonString).leftMap(error => NonEmptyChain(error.getMessage))
+  private type DecodingAndValidationResult[A] = ValidatedNec[String, A]
+
+  private def decode[A](
+      c: HCursor,
+      field: String,
+      validate: String => DomainEntityValidationError.ValidationResult[A])
+    : DecodingAndValidationResult[A] = {
+    c.get[String](field)
+      .fold(
+        _.message.invalidNec[A],
+        validate andThen { _.leftMap(_.map(_.errorMessage)) }
+      )
+  }
+
+  private def decode[A: Decoder](
+      c: HCursor,
+      field: String): DecodingAndValidationResult[A] = {
+    c.get[A](field)
+      .fold(
+        _.message.invalidNec[A],
+        _.validNec[String]
+      )
+  }
+
+  private def parsingFailureToLeft[A](parsingFailure: ParsingFailure) =
+    NonEmptyChain.one(parsingFailure.message).asLeft[A]
 
   //TODO replace by compile-time derivation/macro/reflection
   override implicit val userJsonApi: JsonApi[User] = new JsonApi[User] {
-
-    private def collapseValidated[T](
-        validationAndParsingResult: ValidatedNec[DecodingFailure,
-                                                 ValidationResult[T]])
-      : Either[NonEmptyChain[String], T] = {
-      val withErrorsAsString = validationAndParsingResult.bimap(
-        jsonDecodingFailures => jsonDecodingFailures.map(_.message),
-        validationResult => validationResult.leftMap(_.map(_.errorMessage))
+    implicit val encoder: Encoder[User] = new Encoder[User] {
+      override def apply(a: User): Json = Json.obj(
+        "id" -> idEncoder(a.id),
+        "password" -> passwordEncoder(a.password),
+        "email" -> emailEncoder(a.email)
       )
-
-      withErrorsAsString
-        .fold(
-          jsonDecodingFailures => jsonDecodingFailures.invalid[T],
-          identity
-        )
-        .toEither
     }
 
-    private def collapseEither[T](
-        data: Either[String, Either[NonEmptyChain[String], T]]) =
-      data.fold(
-        s => NonEmptyChain(s).asLeft[T],
-        identity
-      )
-
     override def write(entity: User): String =
-      Json
-        .obj(
-          "id" -> Json.fromString(entity.id.value),
-          "password" -> Json.fromString(entity.password.value),
-          "email" -> Json.fromString(entity.email.value)
-        )
-        .noSpaces
+      entity.asJson.noSpaces
 
     override def read(
         jsonString: String): Either[NonEmptyChain[String], User] = {
-      {
-        val either = parse(jsonString).bimap(
-          _.message,
-          json => {
-            val cursor = json.hcursor
-            type DecodingResult[A] = ValidatedNec[DecodingFailure, A]
+      parse(jsonString)
+        .fold(
+          parsingFailureToLeft[User], { json =>
+            val c = json.hcursor
+            val id = decode(c, "id", User.Id.validate)
+            val password = decode(c, "password", User.Password.validate)
+            val email = decode(c, "email", User.Email.validate)
 
-            val id: DecodingResult[String] = cursor
-              .get[String]("id")
-              .toValidatedNec
-            val password: DecodingResult[String] = cursor
-              .get[String]("password")
-              .toValidatedNec
-            val email: DecodingResult[String] = cursor
-              .get[String]("email")
-              .toValidatedNec
-
-            val validated =
-              (id, password, email).mapN(User.safeCreate)
-
-            collapseValidated(validated)
+            (id, password, email).mapN(User.safeCreate).toEither
           }
         )
-        collapseEither(either)
-      }
     }
   }
+
+  //TODO replace by compile-time derivation/macro/reflection
   override implicit val incomingChatMessageJsonApi
     : JsonApi[ChatMessage.IncomingChatMessage] =
     new JsonApi[ChatMessage.IncomingChatMessage] {
-      implicit val decoder: Decoder[ChatMessage.IncomingChatMessage] =
-        deriveDecoder
       implicit val encoder: Encoder[ChatMessage.IncomingChatMessage] =
-        deriveEncoder
+        new Encoder[ChatMessage.IncomingChatMessage] {
+          override def apply(a: ChatMessage.IncomingChatMessage): Json =
+            Json.obj(
+              "to" -> idEncoder(a.to),
+              "payload" -> Json.fromString(a.payload)
+            )
+        }
 
       override def write(entity: ChatMessage.IncomingChatMessage): String =
         entity.asJson.noSpaces
 
       override def read(jsonString: String)
         : Either[NonEmptyChain[String], ChatMessage.IncomingChatMessage] =
-        decodeWithoutValidation(jsonString)
+        parse(jsonString).fold(
+          parsingFailureToLeft[ChatMessage.IncomingChatMessage], { json =>
+            val c = json.hcursor
+            val to = decode(c, "to", User.Id.validate)
+            val payload = decode[String](c, "payload")
+            (to, payload).mapN(ChatMessage.IncomingChatMessage.apply).toEither
+          }
+        )
     }
+
   override implicit val generalChatMessageJsonApi
     : JsonApi[ChatMessage.GeneralChatMessage] =
     new JsonApi[ChatMessage.GeneralChatMessage] {
-      implicit val decoder: Decoder[ChatMessage.GeneralChatMessage] =
-        deriveDecoder
       implicit val encoder: Encoder[ChatMessage.GeneralChatMessage] =
-        deriveEncoder
+        new Encoder[ChatMessage.GeneralChatMessage] {
+          override def apply(a: ChatMessage.GeneralChatMessage): Json =
+            Json.obj(
+              "to" -> idEncoder(a.to),
+              "from" -> idEncoder(a.from),
+              "payload" -> Json.fromString(a.payload),
+              "dateTimeUtcEpochSeconds" -> Json.fromLong(
+                a.dateTimeUtcEpochSeconds)
+            )
+        }
 
       override def write(entity: ChatMessage.GeneralChatMessage): String =
         entity.asJson.noSpaces
+
       override def read(jsonString: String)
         : Either[NonEmptyChain[String], ChatMessage.GeneralChatMessage] =
-        decodeWithoutValidation(jsonString)
+        parse(jsonString).fold(
+          parsingFailureToLeft[ChatMessage.GeneralChatMessage], { json =>
+            val c = json.hcursor
+            val from = decode(c, "from", User.Id.validate)
+            val to = decode(c, "to", User.Id.validate)
+            val payload = decode[String](c, "payload")
+            val time = decode[Long](c, "dateTimeUtcEpochSeconds")
+
+            (from, to, payload, time)
+              .mapN(ChatMessage.GeneralChatMessage.apply)
+              .toEither
+          }
+        )
     }
 
   override implicit val signUpRequestJsonApi: JsonApi[SignUpRequest] =
@@ -119,35 +150,41 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
         deriveEncoder
 
       override def write(entity: SignUpRequest): String = entity.asJson.noSpaces
+
       override def read(
           jsonString: String): Either[NonEmptyChain[String], SignUpRequest] =
-        decodeWithoutValidation(jsonString)
+        io.circe.parser
+          .decode[SignUpRequest](jsonString)
+          .leftMap(e => NonEmptyChain.one(e.getMessage))
     }
 
-  override implicit val invalidSignUpRequestJsonApi
-    : JsonApi[InvalidSignUpRequest] = new JsonApi[InvalidSignUpRequest] {
-    implicit val decoder: Decoder[InvalidSignUpRequest] =
-      (c: HCursor) =>
-        c.get[List[String]]("validationErrors").flatMap { errors =>
-          NonEmptyChain
-            .fromSeq(errors)
-            .map(InvalidSignUpRequest)
-            .map(invalidSignUpRequest =>
-              invalidSignUpRequest.asRight[DecodingFailure])
-            .getOrElse(DecodingFailure("validationErrors should not be empty",
-                                       Nil).asLeft[InvalidSignUpRequest])
+  override implicit val invalidSignUpRequestJsonApi: JsonApi[InvalidRequest] =
+    new JsonApi[InvalidRequest] {
+      implicit val decoder: Decoder[InvalidRequest] =
+        (c: HCursor) =>
+          c.get[List[String]]("validationErrors").flatMap { errors =>
+            NonEmptyChain
+              .fromSeq(errors)
+              .map(InvalidRequest)
+              .map(invalidRequest => invalidRequest.asRight[DecodingFailure])
+              .getOrElse(DecodingFailure("validationErrors should not be empty",
+                                         Nil).asLeft[InvalidRequest])
 
-      }
-    implicit val encoder: Encoder[InvalidSignUpRequest] =
-      (a: InvalidSignUpRequest) =>
-        Json.obj("validationErrors" -> a.validationErrors.toList.asJson)
+        }
+      implicit val encoder: Encoder[InvalidRequest] =
+        (a: InvalidRequest) =>
+          Json.obj("validationErrors" -> a.validationErrors.toList.asJson)
 
-    override def write(entity: InvalidSignUpRequest): String =
-      entity.asJson.noSpaces
-    override def read(jsonString: String)
-      : Either[NonEmptyChain[String], InvalidSignUpRequest] =
-      decodeWithoutValidation(jsonString)
-  }
+      override def write(entity: InvalidRequest): String =
+        entity.asJson.noSpaces
+
+      override def read(
+          jsonString: String): Either[NonEmptyChain[String], InvalidRequest] =
+        io.circe.parser
+          .decode[InvalidRequest](jsonString)
+          .leftMap(e => NonEmptyChain.one(e.getMessage))
+
+    }
 
   override implicit val validSignUpRequestJsonApi: JsonApi[ValidSignUpRequest] =
     new JsonApi[ValidSignUpRequest] {

@@ -9,11 +9,11 @@ import japgolly.scalajs.react.vdom.html_<^._
 object ChatComponent {
 
   final case class Props(user: Option[User],
-                         messages: Map[String, List[GeneralChatMessage]],
-                         addUser: String => Callback,
-                         send: (String, String) => Callback)
+                         messages: Map[User.Id, List[GeneralChatMessage]],
+                         addUser: User.Id => Callback,
+                         send: (User.Id, String) => Callback)
 
-  final case class State(active: Option[String])
+  final case class State(activeContact: Option[User.Id])
 
   object State {
     def init: State = State(None)
@@ -23,13 +23,13 @@ object ChatComponent {
 
     def render(p: Props, s: State): VdomElement = {
       val discussionMessages = (for {
-        activeContact <- s.active
+        activeContact <- s.activeContact
       } yield p.messages.getOrElse(activeContact, Nil))
         .getOrElse(Nil)
 
       def messageSendingComponentSend(m: String) =
         (for {
-          contact <- s.active
+          contact <- s.activeContact
         } yield p.send(contact, m)).getOrElse(Callback.empty)
 
       <.div(
@@ -42,9 +42,9 @@ object ChatComponent {
               ContactsComponent
                 .Props(p.user,
                        p.messages.keys.toSet,
-                       u => $.modState(_.copy(active = Some(u))),
+                       u => $.modState(_.copy(activeContact = Some(u))),
                        p.addUser,
-                       s.active))
+                       s.activeContact))
           ),
           <.div(
             ^.className := "col-md-9",
@@ -52,7 +52,7 @@ object ChatComponent {
               MessagesComponent.Props(p.user, discussionMessages)),
             MessageSendingComponent.Component(
               MessageSendingComponent.Props(
-                s.active.nonEmpty && p.user.nonEmpty,
+                s.activeContact.nonEmpty && p.user.nonEmpty,
                 messageSendingComponentSend))
           )
         )

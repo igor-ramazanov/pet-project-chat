@@ -1,9 +1,8 @@
 package com.github.igorramazanov.chat.route
-import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import cats.effect.Effect
-import com.github.igorramazanov.chat.HttpStatusCodes
+import cats.Monad
+import com.github.igorramazanov.chat.HttpStatusCode
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
 import com.github.igorramazanov.chat.api.{
@@ -18,10 +17,10 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
-object Verify {
+object Verify extends AbstractRoute {
   private val logger = LoggerFactory.getLogger(getClass)
 
-  def createRoute[F[_]: EmailApi: UserApi: Effect: ExecuteToFuture](
+  def createRoute[F[_]: EmailApi: UserApi: Monad: ExecuteToFuture](
       isEnabled: Boolean,
       emailVerificationTimeout: FiniteDuration): Option[Route] =
     if (isEnabled) {
@@ -40,23 +39,19 @@ object Verify {
                       .unsafeToFuture
                     logger.debug(
                       s"Successfully verified user: ${request.toString}")
-                    complete(
-                      StatusCode.int2StatusCode(HttpStatusCodes.SignedUp))
+                    complete(HttpStatusCode.Ok)
                   case Left(UserAlreadyExists) =>
                     EmailApi[F]
                       .deleteRequest(emailVerificationId)
                       .unsafeToFuture
                     logger.debug(
                       s"User with such id already exists: ${request.toString}")
-                    complete(StatusCode.int2StatusCode(
-                      HttpStatusCodes.UserAlreadyExists))
+                    complete(HttpStatusCode.UserAlreadyExists)
                 }
               case Left(EmailWasNotVerifiedInTime) =>
                 logger.debug(
                   s"Email was not verified in specified time of $emailVerificationTimeout, verification id: $rawVerificationId")
-                complete(
-                  StatusCode.int2StatusCode(
-                    HttpStatusCodes.EmailWasNotVerifiedInTime)).pure
+                complete(HttpStatusCode.EmailWasNotVerifiedInTime).pure
             }
 
           onComplete(verificationEndProcess.unsafeToFuture) {
@@ -65,10 +60,10 @@ object Verify {
               logger.error(
                 s"Some error ocurred during email verification end process: '$rawVerificationId', reason: ${exception.getMessage}",
                 exception)
-              complete(StatusCodes.InternalServerError)
+              complete(HttpStatusCode.ServerError)
           }
         } else {
-          complete(StatusCode.int2StatusCode(HttpStatusCodes.ValidationErrors))
+          complete(HttpStatusCode.ValidationErrors)
         }
       })
     } else {

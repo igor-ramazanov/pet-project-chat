@@ -18,10 +18,10 @@ sealed trait DomainEntity extends Product with Serializable
 sealed trait ChatMessage extends DomainEntity
 
 object ChatMessage {
-  final case class IncomingChatMessage(to: String, payload: String)
+  final case class IncomingChatMessage(to: User.Id, payload: String)
       extends ChatMessage {
-    def asGeneral(from: User, dateTimeEpochSeconds: Long) =
-      GeneralChatMessage(from = from.id.value,
+    def asGeneral(from: User.Id, dateTimeEpochSeconds: Long) =
+      GeneralChatMessage(from = from,
                          to = to,
                          payload = payload,
                          dateTimeUtcEpochSeconds = dateTimeEpochSeconds)
@@ -29,8 +29,8 @@ object ChatMessage {
     override def toString: String =
       s"IncomingChatMessage(to=$to, payload is hidden)"
   }
-  final case class GeneralChatMessage(from: String,
-                                      to: String,
+  final case class GeneralChatMessage(from: User.Id,
+                                      to: User.Id,
                                       payload: String,
                                       dateTimeUtcEpochSeconds: Long)
       extends ChatMessage {
@@ -52,13 +52,13 @@ object KeepAliveMessage {
 final case class SignUpRequest(id: String, password: String, email: String)
     extends DomainEntity {
 
-  def validate: Either[InvalidSignUpRequest, ValidSignUpRequest] =
+  def validate: Either[InvalidRequest, ValidSignUpRequest] =
     (User.Id.validate(id),
      User.Password.validate(password),
      User.Email.validate(email))
       .mapN((id, password, email) => ValidSignUpRequest(id, password, email))
       .leftMap(validationErrors =>
-        InvalidSignUpRequest(validationErrors.map(_.errorMessage)))
+        InvalidRequest(validationErrors.map(_.errorMessage)))
       .toEither
 
   def unsafeToUser: User =
@@ -68,7 +68,7 @@ final case class SignUpRequest(id: String, password: String, email: String)
     s"SignUpRequest(id=$id, email and password are hidden)"
 }
 
-final case class InvalidSignUpRequest(validationErrors: NonEmptyChain[String])
+final case class InvalidRequest(validationErrors: NonEmptyChain[String])
     extends DomainEntity
 
 final case class ValidSignUpRequest private (id: User.Id,

@@ -2,6 +2,8 @@ package com.github.igorramazanov.chat.components
 
 import com.github.igorramazanov.chat.domain.ChatMessage.GeneralChatMessage
 import com.github.igorramazanov.chat.domain.User
+import com.github.igorramazanov.chat.domain.User.Implicits._
+import cats.syntax.eq._
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.vdom.html_<^._
 import scala.concurrent.duration._
@@ -75,7 +77,7 @@ object MessagesComponent {
         <.div(
           ^.className := s"list-group-item",
           Styles.message,
-          if (user.id.value == m.from) Styles.messageMe
+          if (user.id === m.from) Styles.messageMe
           else Styles.messageFriend,
           <.p(p, ^.className := "mb-2"),
           <.div(^.className := "d-flex justify-content-end",

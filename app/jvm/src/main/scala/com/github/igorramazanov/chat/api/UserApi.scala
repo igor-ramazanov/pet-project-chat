@@ -7,7 +7,7 @@ import simulacrum.typeclass
               email: User.Email,
               password: User.Password): F[Option[User]]
 
-  def exists(email: User.Id): F[Boolean]
+  def exists(id: User.Id): F[Boolean]
 
   def save(user: User): F[Either[UserAlreadyExists.type, Unit]]
 }

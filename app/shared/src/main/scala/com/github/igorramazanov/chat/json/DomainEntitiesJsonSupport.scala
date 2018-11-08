@@ -8,7 +8,7 @@ import com.github.igorramazanov.chat.domain.ChatMessage.{
 import com.github.igorramazanov.chat.domain._
 
 trait DomainEntitiesJsonSupport {
-  implicit def invalidSignUpRequestJsonApi: JsonApi[InvalidSignUpRequest]
+  implicit def invalidSignUpRequestJsonApi: JsonApi[InvalidRequest]
   implicit def signUpRequestJsonApi: JsonApi[SignUpRequest]
   implicit def validSignUpRequestJsonApi: JsonApi[ValidSignUpRequest]
   implicit def userJsonApi: JsonApi[User]
@@ -20,8 +20,8 @@ trait DomainEntitiesJsonSupport {
 
 object DomainEntitiesJsonSupport {
   implicit class StringOps(val s: String) extends AnyVal {
-    def toInvalidSignUpRequest(implicit jsonApi: JsonApi[InvalidSignUpRequest])
-      : Either[NonEmptyChain[String], InvalidSignUpRequest] =
+    def toInvalidSignUpRequest(implicit jsonApi: JsonApi[InvalidRequest])
+      : Either[NonEmptyChain[String], InvalidRequest] =
       jsonApi.read(s)
 
     def toValidSignUpRequest(implicit jsonApi: JsonApi[ValidSignUpRequest])
@@ -43,9 +43,9 @@ object DomainEntitiesJsonSupport {
       jsonApi.read(s)
   }
 
-  implicit class InvalidSignUpRequestOps(val r: InvalidSignUpRequest)
+  implicit class InvalidSignUpRequestOps(val r: InvalidRequest)
       extends AnyVal {
-    def toJson(implicit jsonApi: JsonApi[InvalidSignUpRequest]): String =
+    def toJson(implicit jsonApi: JsonApi[InvalidRequest]): String =
       jsonApi.write(r)
   }
 

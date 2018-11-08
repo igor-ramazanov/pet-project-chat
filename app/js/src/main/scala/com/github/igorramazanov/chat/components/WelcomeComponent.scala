@@ -44,7 +44,7 @@ object WelcomeComponent {
   }
 
   final class Backend($ : BackendScope[Props, State]) {
-    private def validateUsername: CallbackTo[Unit] =
+    private def validateId: CallbackTo[Unit] =
       $.modState { s =>
         User.Id.validate(s.id) match {
           case Validated.Valid(_) => s.copy(idValidationErrors = Nil)
@@ -151,7 +151,7 @@ object WelcomeComponent {
                 ^.value := s.id,
                 ^.onChange ==> { e: ReactEventFromInput =>
                   e.persist()
-                  $.modState(_.copy(id = e.target.value, isFirstTime = false)) >> validateUsername
+                  $.modState(_.copy(id = e.target.value, isFirstTime = false)) >> validateId
                 }
               ),
               idValidationErrors

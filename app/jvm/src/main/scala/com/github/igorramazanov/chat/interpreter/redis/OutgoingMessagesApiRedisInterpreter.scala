@@ -32,8 +32,8 @@ class OutgoingMessagesApiRedisInterpreter[F[_]: Async: Timer] private (
           _)
       ).map(_.discard())
 
-    sendMessage(generalChatMessage.to).flatMap(_ =>
-      sendMessage(generalChatMessage.from))
+    sendMessage(generalChatMessage.to.value).flatMap(_ =>
+      sendMessage(generalChatMessage.from.value))
   }
 }
 

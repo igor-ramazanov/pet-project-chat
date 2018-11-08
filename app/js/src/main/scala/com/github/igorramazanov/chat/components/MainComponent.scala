@@ -1,5 +1,5 @@
 package com.github.igorramazanov.chat.components
-import com.github.igorramazanov.chat.HttpStatusCodes
+import com.github.igorramazanov.chat.HttpStatusCode
 import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.domain.ChatMessage.{
   GeneralChatMessage,
@@ -57,24 +57,24 @@ object MainComponent {
                          currentPage: Page,
                          isInFlight: Boolean,
                          ws: Option[WebSocket],
-                         messages: Map[String, List[GeneralChatMessage]],
+                         messages: Map[User.Id, List[GeneralChatMessage]],
                          alerts: List[Alert]) {
-    def appendMessage(username: String, message: GeneralChatMessage): State = {
+    def appendMessage(id: User.Id, message: GeneralChatMessage): State = {
       val interlocutor =
-        if (username == message.from) message.to else message.from
+        if (id == message.from) message.to else message.from
       val previousMessages = messages.getOrElse(interlocutor, Nil)
       val withNewMessage = previousMessages ::: (message :: Nil)
       copy(messages = messages.updated(interlocutor, withNewMessage))
     }
 
-    def addNewContact(username: String): State = {
+    def addNewContact(username: User.Id): State = {
       copy(messages = messages + (username -> Nil))
     }
 
     def addAlert(alert: Alert): State = copy(alerts = alert :: alerts)
 
-    def removeAlert(id: String): State =
-      copy(alerts = alerts.filterNot(_.id == id))
+    def removeAlert(alertId: String): State =
+      copy(alerts = alerts.filterNot(_.id == alertId))
   }
 
   object State {
@@ -131,7 +131,7 @@ object MainComponent {
                   s"Couldn't parse message '$messageEither' to show, reason: $error",
                   Alert.Type.Warning)))
               case Right(message) =>
-                direct.modState(_.appendMessage(id.value, message))
+                direct.modState(_.appendMessage(id, message))
             }
           }
         }
@@ -169,14 +169,14 @@ object MainComponent {
           .onComplete { xhr =>
             $.modState(_.copy(isInFlight = false)) >> {
               xhr.status match {
-                case HttpStatusCodes.SignedUp =>
+                case HttpStatusCode.Ok.value =>
                   signIn(id, email, password)
-                case HttpStatusCodes.SuccessfullySentVerificationEmail =>
+                case HttpStatusCode.SuccessfullySentVerificationEmail.value =>
                   $.modState(
                     _.addAlert(Alert(
                       s"Successfully sent verification email on ${email.value}",
                       Alert.Type.Success)))
-                case HttpStatusCodes.UserAlreadyExists =>
+                case HttpStatusCode.UserAlreadyExists.value =>
                   $.modState(
                     _.addAlert(
                       Alert(s"User with id '${id.value}' already exists",
@@ -191,10 +191,19 @@ object MainComponent {
           .asCallback
     }
 
-    private def addNewContact(otherUser: String): Callback =
-      $.modState(_.addNewContact(otherUser))
+    private def addNewContact(contact: User.Id): Callback =
+      Ajax("GET", s"/exists?id=${contact.value}").setRequestContentTypeJsonUtf8.send.onComplete {
+        xhr =>
+          xhr.status match {
+            case HttpStatusCode.Ok.value => $.modState(_.addNewContact(contact))
+            case HttpStatusCode.UserDoesNotExists.value =>
+              $.modState(
+                _.addAlert(Alert(s"The user '${contact.value}' does not exists",
+                                 Alert.Type.Warning)))
+          }
+      }.asCallback
 
-    private def send(to: String, message: String): Callback = {
+    private def send(to: User.Id, message: String): Callback = {
       $.state.map { s =>
         for {
           _ <- s.user

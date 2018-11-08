@@ -11,6 +11,7 @@ import scredis._
 
 import scala.concurrent.ExecutionContext
 import com.github.igorramazanov.chat.UtilsShared._
+import com.github.igorramazanov.chat.domain.User
 
 class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer] private (
     redis: Redis)(implicit ec: ExecutionContext,
@@ -21,9 +22,9 @@ class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer] private (
   import jsonSupport._
   import DomainEntitiesJsonSupport._
 
-  override def ofUserOrdered(id: String): F[List[GeneralChatMessage]] = {
+  override def ofUserOrdered(id: User.Id): F[List[GeneralChatMessage]] = {
     liftFromFuture(
-      redis.lRange[String](id + suffix),
+      redis.lRange[String](id.value + suffix),
       logger
         .error(s"Couldn't retrieve persistence message of user '$id'", _))
       .map { jsonStrings =>
@@ -38,8 +39,8 @@ class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer] private (
       }
   }
 
-  override def save(id: String, message: GeneralChatMessage): F[Unit] = {
-    liftFromFuture(redis.rPush(id + suffix, message.toJson),
+  override def save(id: User.Id, message: GeneralChatMessage): F[Unit] = {
+    liftFromFuture(redis.rPush(id.value + suffix, message.toJson),
                    logger.error(s"Couldn't persist message of user '$id'", _))
       .map(_.discard())
   }

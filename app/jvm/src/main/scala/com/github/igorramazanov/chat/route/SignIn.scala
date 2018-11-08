@@ -1,14 +1,12 @@
 package com.github.igorramazanov.chat.route
 
 import akka.NotUsed
-import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
-import cats.effect.Effect
-import com.github.igorramazanov.chat.Utils
+import cats.Monad
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
 import com.github.igorramazanov.chat.UtilsShared._
@@ -16,19 +14,20 @@ import com.github.igorramazanov.chat.api._
 import com.github.igorramazanov.chat.domain.ChatMessage.GeneralChatMessage
 import com.github.igorramazanov.chat.domain.{KeepAliveMessage, User}
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
+import com.github.igorramazanov.chat.{HttpStatusCode, Utils}
 import eu.timepit.refined.types.string.NonEmptyString
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-object SignIn {
+object SignIn extends AbstractRoute {
   private val logger = LoggerFactory.getLogger(getClass)
   private val messageStrictTimeout = 1.minute
   private val keepAliveTimeout = 5.seconds
 
   def createRoute[
-      F[_]: UserApi: ExecuteToFuture: Effect: OutgoingMessagesApi: PersistenceMessagesApi](
+      F[_]: UserApi: ExecuteToFuture: Monad: OutgoingMessagesApi: PersistenceMessagesApi](
       implicit materializer: ActorMaterializer,
       jsonSupport: DomainEntitiesJsonSupport,
       IncomingApi: IncomingMessagesApi): Route = path("signin") {
@@ -57,26 +56,26 @@ object SignIn {
                     logger.error(
                       s"Couldn't create WebSocket flow for user '${user.id}'",
                       ex)
-                    complete(StatusCodes.InternalServerError)
+                    complete(HttpStatusCode.ServerError)
                 }
               case Success(None) =>
                 logger.debug(s"Sign in request forbidden, email: '$email'")
-                complete(StatusCodes.Forbidden)
+                complete(HttpStatusCode.InvalidCredentials)
               case Failure(ex) =>
                 logger.error(
                   s"Couldn't check user credentials. Email - $email, error message: ${ex.getMessage}",
                   ex)
-                complete(StatusCodes.InternalServerError)
+                complete(HttpStatusCode.ServerError)
             }
           }).getOrElse {
-            complete(StatusCodes.BadRequest)
+            complete(HttpStatusCode.ValidationErrors)
           }
       }
     }
   }
 
   private def createWebSocketFlow[
-      F[_]: ExecuteToFuture: Effect: OutgoingMessagesApi: PersistenceMessagesApi](
+      F[_]: ExecuteToFuture: Monad: OutgoingMessagesApi: PersistenceMessagesApi](
       user: User
   )(implicit materializer: ActorMaterializer,
     jsonSupport: DomainEntitiesJsonSupport,
@@ -85,7 +84,7 @@ object SignIn {
     import jsonSupport._
 
     val source =
-      Effect[F].map(PersistenceMessagesApi[F].ofUserOrdered(user.id.value)) {
+      Monad[F].map(PersistenceMessagesApi[F].ofUserOrdered(user.id)) {
         messages =>
           val sourcePersistent =
             Source(messages).map(m => TextMessage(m.toJson))
@@ -131,14 +130,14 @@ object SignIn {
               s"Couldn't parse incoming websocket message: $jsonString to IncomingChatMessage, reason: $error")
             Nil
           },
-          m => List(m.asGeneral(user, Utils.currentUtcUnixEpochMillis))
+          m => List(m.asGeneral(user.id, Utils.currentUtcUnixEpochMillis))
         )
       }
       .to(Sink.foreach[GeneralChatMessage] { m =>
         saveAndPublish(m).unsafeToFuture.discard()
       })
 
-    Effect[F].map(source) { s =>
+    Monad[F].map(source) { s =>
       Flow.fromSinkAndSource(sink, s)
     }
   }
