@@ -57,18 +57,4 @@ chat_1   | Please open the following address in your browser:
 chat_1   |   https://accounts.google.com/o/oauth2/auth?access_type=offline&client_id=79839010810-nj08luifjin39dv08opfpd5q2phl08oo.apps.googleusercontent.com&redirect_uri=http://localhost:8888/Callback&response_type=code&scope=https://www.googleapis.com/auth/gmail.send
 ```
 
-## Usage
-```
-Usage: pet-project-chat [options]
-
-  --help                   prints this help
-  -h, --redis-host <value>
-                           (required) host of redis used as a storage
-  -p, --verification-email-link-prefix <value>
-                           (required) prefix of the verification link sent to clients on registration, specify address by which the server is accessible, i.e. 'http://localhost:8080'
-  -l, --log-level <value>  (optional) log level, must be one of 'OFF','ERROR','WARN','INFO','DEBUG','TRACE','ALL', default is INFO
-  -t, --email-verification-timeout <value>
-                           (optional) email verification timeout, examples are '1 second', '9 days', '3 hours', '1 hour', default is '1 day'
-```
-
 ![Web UI](/webui.png)
