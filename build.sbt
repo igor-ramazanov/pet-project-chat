@@ -62,7 +62,7 @@ version in ThisBuild := "1.0"
 lazy val root = project.in(file("."))
 
 val sharedSettings = Seq(
-  organization := "io.github.igorramazanov",
+  organization := "com.github.igorramazanov",
   libraryDependencies ++= Seq(
     "io.circe" %%% "circe-core" % "0.10.0",
     "io.circe" %%% "circe-parser" % "0.10.0",
