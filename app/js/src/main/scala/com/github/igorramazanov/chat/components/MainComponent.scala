@@ -1,5 +1,5 @@
 package com.github.igorramazanov.chat.components
-import com.github.igorramazanov.chat.HttpStatusCode
+import com.github.igorramazanov.chat.ResponseCode
 import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.domain.ChatMessage.{
   GeneralChatMessage,
@@ -169,19 +169,19 @@ object MainComponent {
           .onComplete { xhr =>
             $.modState(_.copy(isInFlight = false)) >> {
               xhr.status match {
-                case HttpStatusCode.Ok.value =>
+                case ResponseCode.Ok.value =>
                   signIn(id, email, password)
-                case HttpStatusCode.SuccessfullySentVerificationEmail.value =>
+                case ResponseCode.SuccessfullySentVerificationEmail.value =>
                   $.modState(
                     _.addAlert(Alert(
                       s"Successfully sent verification email on ${email.value}",
                       Alert.Type.Success)))
-                case HttpStatusCode.UserAlreadyExists.value =>
+                case ResponseCode.UserAlreadyExists.value =>
                   $.modState(
                     _.addAlert(
                       Alert(s"User with id '${id.value}' already exists",
                             Alert.Type.Warning)))
-                case HttpStatusCode.ServerError.value =>
+                case ResponseCode.ServerError.value =>
                   $.modState(
                     _.addAlert(Alert(s"Couldn't sign up - server error",
                                      Alert.Type.Failure)))
@@ -199,12 +199,12 @@ object MainComponent {
       Ajax("GET", s"/exists?id=${contact.value}").setRequestContentTypeJsonUtf8.send.onComplete {
         xhr =>
           xhr.status match {
-            case HttpStatusCode.Ok.value => $.modState(_.addNewContact(contact))
-            case HttpStatusCode.UserDoesNotExists.value =>
+            case ResponseCode.Ok.value => $.modState(_.addNewContact(contact))
+            case ResponseCode.UserDoesNotExists.value =>
               $.modState(
                 _.addAlert(Alert(s"The user '${contact.value}' does not exists",
                                  Alert.Type.Warning)))
-            case HttpStatusCode.ServerError.value =>
+            case ResponseCode.ServerError.value =>
               $.modState(
                 _.addAlert(Alert(
                   s"Couldn't check existence of used ${contact.value}, server error",

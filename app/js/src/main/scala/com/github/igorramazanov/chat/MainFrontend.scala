@@ -26,7 +26,7 @@ object MainFrontend {
   private def initializeObjects(): Unit = {
     List(
       UtilsShared,
-      HttpStatusCode,
+      ResponseCode,
       DomainEntitiesJsonSupport,
       DomainEntitiesCirceJsonSupport,
       JsonApi,

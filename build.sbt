@@ -60,6 +60,7 @@ scalaVersion in ThisBuild := "2.12.7"
 version in ThisBuild := "1.0"
 
 lazy val root = project.in(file("."))
+lazy val IntTest = config("it")extend(Test)
 
 val sharedSettings = Seq(
   organization := "com.github.igorramazanov",
@@ -88,7 +89,11 @@ val jvmSettings = Seq(
     "ch.qos.logback" % "logback-classic" % "1.2.3",
     "com.github.scopt" %% "scopt" % "3.7.0",
     "com.sun.mail" % "javax.mail" % "1.6.2",
-    "com.typesafe.akka" %% "akka-slf4j" % "2.5.12"
+    "com.typesafe.akka" %% "akka-slf4j" % "2.5.12",
+    "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
+    "org.scalacheck" %% "scalacheck" % "1.14.0" % "it,test",
+    "com.dimafeng" %% "testcontainers-scala" % "0.21.0" % "it,test",
+    "com.typesafe.akka" %% "akka-http-testkit" % "10.1.5" % "it,test"
   ),
   (Docker / packageName) := "com.github.igorramazanov/chat",
   dockerUpdateLatest:= true,
@@ -103,6 +108,15 @@ val jvmSettings = Seq(
     cleanDockerImages.value
   },
   Compile / scalacOptions := ("-Xplugin:" + (baseDirectory.in(root).value / ("paradise_" + scalaVersion.value + "-2.1.1.jar")).absolutePath) +: compilerOptions,
+  (IntTest / test) := {
+    (Docker / publishLocal).value
+    cleanDockerImages.value
+    (IntTest / test).value
+  },
+  (IntTest / scalacOptions) --= Seq("-Xfatal-warnings", "-deprecation"),
+  (Test / scalacOptions) --= Seq("-Xfatal-warnings", "-deprecation"),
+  Test / testOptions:= Seq(Tests.Filter(s => s.endsWith("Test") && !s.endsWith("ITest"))),
+  IntTest / testOptions := Seq(Tests.Filter(_.endsWith("ITest"))),
   (Compile / console / scalacOptions) --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings")
 )
 
@@ -144,11 +158,13 @@ lazy val app = crossProject(JSPlatform, JVMPlatform)
 
 lazy val appJs = app.js
 lazy val appJvm = app.jvm
+  .configs(IntTest)
   .enablePlugins(JavaServerAppPackaging, AshScriptPlugin, DockerPlugin, BuildInfoPlugin)
   .settings(
     addFrontendResourcesToClasspath()
   )
   .settings(addBuildInfoKeys(): _*)
+  .settings(inConfig(IntTest)(Defaults.testTasks))
 
 def addBuildInfoKeys() = {
   if (inDevMode) {

@@ -19,7 +19,7 @@ import com.github.igorramazanov.chat.domain.{
   User
 }
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
-import com.github.igorramazanov.chat.{HttpStatusCode, Utils}
+import com.github.igorramazanov.chat.{ResponseCode, Utils}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
@@ -45,7 +45,7 @@ object SignIn extends AbstractRoute {
               complete(
                 HttpResponse(
                   status = StatusCode.int2StatusCode(
-                    HttpStatusCode.ValidationErrors.value),
+                    ResponseCode.ValidationErrors.value),
                   entity = HttpEntity(MediaTypes.`application/json`,
                                       invalidRequest.toJson))), { validRequest =>
               logger.debug(s"Sign in request start, ${validRequest.toString}")
@@ -65,17 +65,17 @@ object SignIn extends AbstractRoute {
                       logger.error(
                         s"Couldn't create WebSocket flow for request '${validRequest.toString}'",
                         ex)
-                      complete(HttpStatusCode.ServerError)
+                      complete(ResponseCode.ServerError)
                   }
                 case Success(None) =>
                   logger.debug(
                     s"Sign in request forbidden, request: '${validRequest.toString}'")
-                  complete(HttpStatusCode.InvalidCredentials)
+                  complete(ResponseCode.InvalidCredentials)
                 case Failure(ex) =>
                   logger.error(
                     s"Couldn't check user credentials, request - ${validRequest.toString}, error message: ${ex.getMessage}",
                     ex)
-                  complete(HttpStatusCode.ServerError)
+                  complete(ResponseCode.ServerError)
               }
             }
           )

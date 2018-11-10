@@ -6,7 +6,7 @@ import akka.http.scaladsl.unmarshalling.{FromRequestUnmarshaller, Unmarshaller}
 import akka.stream.Materializer
 import cats.syntax.all._
 import cats.{Functor, Monad}
-import com.github.igorramazanov.chat.HttpStatusCode
+import com.github.igorramazanov.chat.ResponseCode
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
 import com.github.igorramazanov.chat.api._
@@ -65,7 +65,7 @@ object SignUp extends AbstractRoute {
               case Left(invalidRequest) =>
                 complete(
                   HttpResponse(status = StatusCode.int2StatusCode(
-                                 HttpStatusCode.ValidationErrors.value),
+                                 ResponseCode.ValidationErrors.value),
                                entity =
                                  HttpEntity(MediaTypes.`application/json`,
                                             invalidRequest.toJson)))
@@ -86,7 +86,7 @@ object SignUp extends AbstractRoute {
                     logger.error(
                       s"Some error occurred during email verification start process: '${request.email}', reason: ${exception.getMessage}",
                       exception)
-                    complete(HttpStatusCode.ServerError)
+                    complete(ResponseCode.ServerError)
                 }
             }
           }
@@ -102,11 +102,11 @@ object SignUp extends AbstractRoute {
       case Right(_) =>
         logger.debug(
           s"Successfully registered new user ${validSignUpRequest.asUser}")
-        complete(HttpStatusCode.Ok)
+        complete(ResponseCode.Ok)
       case Left(UserAlreadyExists) =>
         logger.debug(
           s"User with the same email already exists, ${validSignUpRequest.toString}, conflict")
-        complete(HttpStatusCode.UserAlreadyExists)
+        complete(ResponseCode.UserAlreadyExists)
     }
   }
 
@@ -117,7 +117,7 @@ object SignUp extends AbstractRoute {
       if (doesUserAlreadyExist) {
         logger.debug(
           s"User with the same email already exists, $request, conflict")
-        complete(HttpStatusCode.UserAlreadyExists).pure
+        complete(ResponseCode.UserAlreadyExists).pure
       } else {
         EmailApi[F]
           .saveRequestWithExpiration(request)
@@ -127,12 +127,12 @@ object SignUp extends AbstractRoute {
             case Right(_) =>
               logger.debug(
                 s"Successfully sent verification email, email: '${request.email}'")
-              complete(HttpStatusCode.SuccessfullySentVerificationEmail)
+              complete(ResponseCode.SuccessfullySentVerificationEmail)
             case Left(exception) =>
               logger.error(
                 s"Couldn't send verification email: '${request.email}', reason: ${exception.getMessage}",
                 exception)
-              complete(HttpStatusCode.ServerError)
+              complete(ResponseCode.ServerError)
           }
       }
     }

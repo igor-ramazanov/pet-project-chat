@@ -2,7 +2,7 @@ package com.github.igorramazanov.chat.route
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import cats.Monad
-import com.github.igorramazanov.chat.HttpStatusCode
+import com.github.igorramazanov.chat.ResponseCode
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
 import com.github.igorramazanov.chat.api.{
@@ -37,19 +37,19 @@ object Verify extends AbstractRoute {
                     .unsafeToFuture
                   logger.debug(
                     s"Successfully verified user: ${request.toString}")
-                  complete(HttpStatusCode.Ok)
+                  complete(ResponseCode.Ok)
                 case Left(UserAlreadyExists) =>
                   EmailApi[F]
                     .deleteRequest(emailVerificationId)
                     .unsafeToFuture
                   logger.debug(
                     s"User with such id already exists: ${request.toString}")
-                  complete(HttpStatusCode.UserAlreadyExists)
+                  complete(ResponseCode.UserAlreadyExists)
               }
             case Left(EmailWasNotVerifiedInTime) =>
               logger.debug(
                 s"Email was not verified in specified time of $emailVerificationTimeout, verification id: $rawVerificationId")
-              complete(HttpStatusCode.EmailWasNotVerifiedInTime).pure
+              complete(ResponseCode.EmailWasNotVerifiedInTime).pure
           }
 
         onComplete(verificationEndProcess.unsafeToFuture) {
@@ -58,10 +58,10 @@ object Verify extends AbstractRoute {
             logger.error(
               s"Some error ocurred during email verification end process: '$rawVerificationId', reason: ${exception.getMessage}",
               exception)
-            complete(HttpStatusCode.ServerError)
+            complete(ResponseCode.ServerError)
         }
       } else {
-        complete(HttpStatusCode.ValidationErrors)
+        complete(ResponseCode.ValidationErrors)
       }
     }
 }

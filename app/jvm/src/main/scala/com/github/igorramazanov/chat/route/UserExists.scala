@@ -10,7 +10,7 @@ import akka.http.scaladsl.server.Route
 import cats.Functor
 import cats.data.NonEmptyChain
 import cats.syntax.functor._
-import com.github.igorramazanov.chat.HttpStatusCode
+import com.github.igorramazanov.chat.ResponseCode
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.api.UserApi
 import com.github.igorramazanov.chat.domain.{InvalidRequest, User}
@@ -37,7 +37,7 @@ object UserExists extends AbstractRoute {
                   s"Validation error for checking user existence ${idRaw}, ${validationErrors}")
                 complete(HttpResponse(
                   status = StatusCode.int2StatusCode(
-                    HttpStatusCode.ValidationErrors.value),
+                    ResponseCode.ValidationErrors.value),
                   entity =
                     HttpEntity(MediaTypes.`application/json`,
                                InvalidRequest(validationErrors.flatMap(e =>
@@ -47,11 +47,11 @@ object UserExists extends AbstractRoute {
                 val effect = UserApi[F].exists(id).map { exists =>
                   if (exists) {
                     logger.debug(s"Checking user existence: ${id} exists")
-                    complete(HttpStatusCode.Ok)
+                    complete(ResponseCode.Ok)
                   } else {
                     logger.debug(
                       s"Checking user existence: ${id} does not exists")
-                    complete(HttpStatusCode.UserDoesNotExists)
+                    complete(ResponseCode.UserDoesNotExists)
                   }
                 }
                 onComplete(ExecuteToFuture[F].unsafeToFuture(effect)) {
@@ -60,7 +60,7 @@ object UserExists extends AbstractRoute {
                     logger.error(
                       s"Some error ocurred during user existing checking: '$idRaw', reason: ${exception.getMessage}",
                       exception)
-                    complete(HttpStatusCode.ServerError)
+                    complete(ResponseCode.ServerError)
                 }
               }
             )
