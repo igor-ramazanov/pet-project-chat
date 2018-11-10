@@ -11,6 +11,7 @@ The project is a simple real-time chat on websockets.
 4. [Redis](https://redis.io) - storage and pub-sub mechanism
 5. [ScalaJS](http://scala-js.org/), [ScalaJS bindings for ReactJS](https://github.com/japgolly/scalajs-react), [Bootstrap 4](https://getbootstrap.com) and [ScalaCSS](https://github.com/japgolly/scalacss) - for web client
 6. [OpenAPI](https://swagger.io) - API documentation
+7. [Testcontainers](https://github.com/testcontainers/testcontainers-scala), [ScalaTest](http://www.scalatest.org) and [ScalaCheck](https://www.scalacheck.org) - [property-based integration tests](/app/jvm/src/test/scala/integration/ITest.scala)
 
 I've used the [Tagless Final](https://www.becompany.ch/en/blog/2018/06/21/tagless-final) style of the functional programming, but unsure that everything is written in optimal and correct way and would be very grateful to hear any constructive critics!
 
