@@ -107,6 +107,7 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
         )
     }
 
+  //TODO replace by compile-time derivation/macro/reflection
   override implicit val generalChatMessageJsonApi
     : JsonApi[ChatMessage.GeneralChatMessage] =
     new JsonApi[ChatMessage.GeneralChatMessage] {
