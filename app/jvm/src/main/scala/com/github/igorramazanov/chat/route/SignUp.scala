@@ -10,11 +10,8 @@ import com.github.igorramazanov.chat.HttpStatusCode
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
 import com.github.igorramazanov.chat.api._
-import com.github.igorramazanov.chat.domain.{
-  SignUpRequest,
-  User,
-  ValidSignUpRequest
-}
+import com.github.igorramazanov.chat.config.Config.EmailVerificationConfig
+import com.github.igorramazanov.chat.domain.{SignUpRequest, ValidSignUpRequest}
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import org.slf4j.LoggerFactory
 
@@ -27,9 +24,7 @@ object SignUp extends AbstractRoute {
   private val messageStrictTimeout = 1.minute
 
   def createRoute[F[_]: UserApi: ExecuteToFuture: Monad: EmailApi](
-      gmailVerificationEmailSender: Option[User.Email],
-      emailVerificationLinkPrefix: Option[String],
-      emailVerificationTimeout: FiniteDuration)(
+      emailVerificationConfig: Option[EmailVerificationConfig])(
       implicit jsonSupport: DomainEntitiesJsonSupport): Route = {
     import DomainEntitiesJsonSupport._
     import jsonSupport._
@@ -74,19 +69,12 @@ object SignUp extends AbstractRoute {
                 logger.debug(
                   s"Sending verification email process start for user: '${validSignUpRequest.toString}'")
 
-                val signUpEffect = {
-                  for {
-                    gmail <- gmailVerificationEmailSender
-                    linkPrefix <- emailVerificationLinkPrefix
-                  } yield {
-                    startEmailVerification(validSignUpRequest,
-                                           gmail,
-                                           linkPrefix,
-                                           emailVerificationTimeout)
+                val signUpEffect =
+                  emailVerificationConfig.map { _ =>
+                    startEmailVerification(validSignUpRequest)
+                  } getOrElse {
+                    signUpWithoutEmailVerification(validSignUpRequest)
                   }
-                } getOrElse {
-                  signUpWithoutEmailVerification(validSignUpRequest)
-                }
 
                 onComplete(signUpEffect.unsafeToFuture) {
                   case Success(responseRoute) => responseRoute
@@ -120,10 +108,7 @@ object SignUp extends AbstractRoute {
 
   private def startEmailVerification[
       F[_]: UserApi: ExecuteToFuture: Monad: EmailApi](
-      request: ValidSignUpRequest,
-      gmailVerificationEmailSender: User.Email,
-      emailVerificationLinkPrefix: String,
-      emailVerificationTimeout: FiniteDuration) = {
+      request: ValidSignUpRequest) = {
     UserApi[F].exists(request.id).flatMap { doesUserAlreadyExist =>
       if (doesUserAlreadyExist) {
         logger.debug(
@@ -131,13 +116,9 @@ object SignUp extends AbstractRoute {
         complete(HttpStatusCode.UserAlreadyExists).pure
       } else {
         EmailApi[F]
-          .saveRequestWithExpiration(request, emailVerificationTimeout)
-          .flatMap(
-            EmailApi[F]
-              .sendVerificationEmail(emailVerificationLinkPrefix)(
-                request.email,
-                gmailVerificationEmailSender,
-                _))
+          .saveRequestWithExpiration(request)
+          .flatMap(EmailApi[F]
+            .sendVerificationEmail(request.email, _))
           .map {
             case Right(_) =>
               logger.debug(

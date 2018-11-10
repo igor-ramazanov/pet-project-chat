@@ -75,7 +75,7 @@ val sharedSettings = Seq(
 
 val jvmSettings = Seq(
   name := "pet-project-chat-backend",
-  mainClass := Some("io.github.igorramazanov.chat.Bootloader"),
+  mainClass := Some("com.github.igorramazanov.chat.MainBackend"),
   libraryDependencies ++= Seq(
     "com.github.mpilquist" %% "simulacrum" % "0.14.0",
     "io.monix" %% "monix" % "3.0.0-RC1",
@@ -139,7 +139,6 @@ val jsSettings = Seq(
   (Compile / scalacOptions) ++= compilerOptions.filterNot(Set("-Ywarn-unused:params", "-Ywarn-value-discard").apply),
   (Compile / console / scalacOptions) --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings")
 )
-
 
 lazy val app = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)

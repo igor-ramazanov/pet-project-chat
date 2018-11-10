@@ -181,6 +181,10 @@ object MainComponent {
                     _.addAlert(
                       Alert(s"User with id '${id.value}' already exists",
                             Alert.Type.Warning)))
+                case HttpStatusCode.ServerError.value =>
+                  $.modState(
+                    _.addAlert(Alert(s"Couldn't sign up - server error",
+                                     Alert.Type.Failure)))
                 case other =>
                   $.modState(_.addAlert(Alert(
                     s"Server returned code $other which is not handled by the client app",
@@ -200,6 +204,15 @@ object MainComponent {
               $.modState(
                 _.addAlert(Alert(s"The user '${contact.value}' does not exists",
                                  Alert.Type.Warning)))
+            case HttpStatusCode.ServerError.value =>
+              $.modState(
+                _.addAlert(Alert(
+                  s"Couldn't check existence of used ${contact.value}, server error",
+                  Alert.Type.Failure)))
+            case otherwise =>
+              $.modState(_.addAlert(Alert(
+                s"Couldn't check existence of used ${contact.value}, server returned ${otherwise}",
+                Alert.Type.Failure)))
           }
       }.asCallback
 

@@ -1,9 +1,14 @@
-package com.github.igorramazanov.chat.api
-
+package com.github.igorramazanov.chat.interpreter
 import cats.Functor
-import cats.syntax.all._
+import cats.syntax.functor._
+import cats.syntax.eq._
+import cats.syntax.either._
+import com.github.igorramazanov.chat.api.{
+  KvStoreApi,
+  UserAlreadyExists,
+  UserApi
+}
 import com.github.igorramazanov.chat.domain.User
-import com.github.igorramazanov.chat.domain.User.Implicits._
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import org.slf4j.LoggerFactory
 
@@ -14,8 +19,9 @@ object UserApiToKvStoreApiInterpreter {
       implicit kvStoreApi: KvStoreApi[String, String, F],
       jsonSupport: DomainEntitiesJsonSupport): UserApi[F] =
     new UserApi[F] {
-      import DomainEntitiesJsonSupport._
       import jsonSupport._
+      import DomainEntitiesJsonSupport._
+      import User.Implicits._
 
       override def `match`(id: User.Id,
                            email: User.Email,

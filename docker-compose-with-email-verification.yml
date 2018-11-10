@@ -4,8 +4,16 @@ services:
     image: redis
   chat:
     image: com.github.igorramazanov/chat
-    command: "-h redis -p http://localhost:8080 -e FIX_ME@gmail.com"
+    command: "
+    --redis-host redis
+    --smtp-host FIXME
+    --smtp-user FIXME
+    --smtp-password FIXME
+    --smtp-port FIXME
+    --smtp-tls
+    --smtp-from FIXME
+    --verification-link-prefix http://localhost:8080
+    "
     depends_on: [redis]
     ports:
-    - 8888:8888
     - 8080:8080

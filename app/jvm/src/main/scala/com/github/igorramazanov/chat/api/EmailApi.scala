@@ -3,21 +3,17 @@ import com.github.igorramazanov.chat.domain.User.Email
 import com.github.igorramazanov.chat.domain.ValidSignUpRequest
 import simulacrum.typeclass
 
-import scala.concurrent.duration.FiniteDuration
-
 @typeclass trait EmailApi[F[_]] {
   def saveRequestWithExpiration(
-      signUpRequest: ValidSignUpRequest,
-      duration: FiniteDuration): F[Email.VerificationId]
+      signUpRequest: ValidSignUpRequest): F[Email.VerificationId]
 
   def checkRequestIsExpired(emailVerificationId: Email.VerificationId)
     : F[Either[EmailWasNotVerifiedInTime.type, ValidSignUpRequest]]
 
   def deleteRequest(emailVerificationId: Email.VerificationId): F[Unit]
 
-  def sendVerificationEmail(verificationLinkPrefix: String)(
+  def sendVerificationEmail(
       to: Email,
-      from: Email,
       emailVerificationId: Email.VerificationId): F[Either[Throwable, Unit]]
 }
 

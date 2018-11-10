@@ -18,16 +18,19 @@ I've used the [Tagless Final](https://www.becompany.ch/en/blog/2018/06/21/tagles
 ```
 Usage: pet-project-chat [options]
 
-  --help                   prints this help
-  -h, --redis-host <value>
-                           (required) host of redis used as a storage
-  -l, --log-level <value>  (optional) log level, must be one of 'OFF','ERROR','WARN','INFO','DEBUG','TRACE','ALL', default is INFO
-  -t, --email-verification-timeout <value>
-                           (optional) email verification timeout, examples are '1 second', '9 days', '3 hours', '1 hour', default is '1 day'
-  -p, --verification-email-link-prefix <value>
-                           (optional) prefix of the verification link sent to clients on registration, specify address by which the server is accessible, i.e. 'http://localhost:8080', if not provided then email verification on sign up be disabled
-  -e, --gmail-verification-email-sender <value>
-                           (optional) gmail address of verification email sender, if not provided then email verification on sign up be disabled
+   --help                   prints this help
+   --redis-host <value>     (required) host of redis used as a storage
+   --log-level <value>      (optional) log level, must be one of 'OFF','ERROR','WARN','INFO','DEBUG','TRACE','ALL', default is INFO
+   --smtp-host <value>      (optional) SMTP host, if not provided then verification of emails be disabled
+   --smtp-port <value>      (optional) SMTP port, if not provided then verification of emails be disabled
+   --smtp-tls               (optional) Use TLS for SMTP
+   --smtp-from <value>      (optional) 'from' field of verification emails, if not provided then verification of emails be disabled
+   --smtp-user <value>      (optional) User for SMTP server
+   --smtp-password <value>  (optional) Password for SMTP server
+   --verification-link-prefix <value>
+                            (optional) Prefix of email verification link, i.e. 'http://localhost:8080', if not provided then verification of emails be disabled
+   --email-verification-timeout <value>
+                            (optional) email verification timeout, examples are '1 second', '9 days', '3 hours', '1 hour', default is '1 day'
 ```
 
 ## Building and running locally
@@ -44,17 +47,10 @@ Usage: pet-project-chat [options]
 3. Open [http://localhost:8080](http://localhost:8080) in your browser
 
 #### With email verification on a new user registration
-1. You'll need a Gmail account, it will be used with Google GMail API to send registration verification emails
-2. Get the `credentials.json` according to [Step#1 from instructions](https://developers.google.com/gmail/api/quickstart/java)
-3. Safe the downloaded `credentials.json` into `app/jvm/src/main/resources`
-4. Build the project Docker image `sbt appJVM/docker:publishLocal`
-5. Edit the [docker-compose-with-email-verification.ym](/docker-compose-with-email-verification.yml) replacing the `-e` option to your GMail address account
-6. Run the project and Redis Docker images by `docker-compose -f docker-compose-with-email-verification.ym up`
-7. Open [http://localhost:8080](http://localhost:8080) in your browser
-8. On the first signing up the app will print to logs something like that (see below), follow that instructions
-```
-chat_1   | Please open the following address in your browser:
-chat_1   |   https://accounts.google.com/o/oauth2/auth?access_type=offline&client_id=79839010810-nj08luifjin39dv08opfpd5q2phl08oo.apps.googleusercontent.com&redirect_uri=http://localhost:8888/Callback&response_type=code&scope=https://www.googleapis.com/auth/gmail.send
-```
+1. You'll need an SMTP server, find information with your mail provider, examples: [GMail](https://support.google.com/mail/answer/7126229?visit_id=636774483047111987-1658076072&hl=en&rd=1), [MailRu](https://help.mail.ru/mail-help/mailer/popsmtp)
+2. Build the project Docker image `sbt appJVM/docker:publishLocal`
+3. Edit the [docker-compose-with-email-verification.ym](/docker-compose-with-email-verification.yml) replacing SMTP information you've got from the 1st step
+4. Run the project and Redis Docker images by `docker-compose -f docker-compose-with-email-verification.ym up`
+5. Open [http://localhost:8080](http://localhost:8080) in your browser
 
 ![Web UI](/webui.png)

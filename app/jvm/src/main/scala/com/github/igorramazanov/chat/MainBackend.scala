@@ -8,10 +8,11 @@ import akka.stream.ActorMaterializer
 import cats.effect.Effect
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.UtilsShared._
-import com.github.igorramazanov.chat.api.UserApiToKvStoreApiInterpreter._
 import com.github.igorramazanov.chat.api._
+import com.github.igorramazanov.chat.config.Config
 import com.github.igorramazanov.chat.domain.User.Email
-import com.github.igorramazanov.chat.interpreter.gmail.EmailApiToKvStoreGmailInterpreter._
+import com.github.igorramazanov.chat.domain.ValidSignUpRequest
+import com.github.igorramazanov.chat.interpreter.EmailApiToKvStoreApiInterpreter
 import com.github.igorramazanov.chat.interpreter.redis.RedisInterpreters
 import com.github.igorramazanov.chat.json.{
   DomainEntitiesCirceJsonSupport,
@@ -51,14 +52,33 @@ object MainBackend {
 
       val interpreters = RedisInterpreters.redis[EffectMonad](config.redisHost)
       import interpreters._
+      import com.github.igorramazanov.chat.interpreter.UserApiToKvStoreApiInterpreter._
+      implicit val emailApi =
+        config.emailVerificationConfig.map { c =>
+          new EmailApiToKvStoreApiInterpreter[EffectMonad](c)
+        } getOrElse {
+          val noOp = new EmailApi[EffectMonad]() {
+            override def saveRequestWithExpiration(
+                signUpRequest: ValidSignUpRequest)
+              : EffectMonad[Email.VerificationId] =
+              ???
+
+            override def checkRequestIsExpired(
+                emailVerificationId: Email.VerificationId): EffectMonad[
+              Either[EmailWasNotVerifiedInTime.type, ValidSignUpRequest]] = ???
+            override def deleteRequest(
+                emailVerificationId: Email.VerificationId): EffectMonad[Unit] =
+              ???
+            override def sendVerificationEmail(
+                to: Email,
+                emailVerificationId: Email.VerificationId)
+              : EffectMonad[Either[Throwable, Unit]] = ???
+          }
+          noOp
+        }
 
       val eventualBinding =
-        Http().bindAndHandle(
-          constructRoutes(config.gmailVerificationEmailSender,
-                          config.emailVerificationLinkPrefix,
-                          config.emailVerificationTimeout),
-          "0.0.0.0",
-          8080)
+        Http().bindAndHandle(constructRoutes(config), "0.0.0.0", 8080)
       eventualBinding.foreach(_ =>
         logger.info("Server is listening on 8080 port"))
 
@@ -90,26 +110,19 @@ object MainBackend {
 
   private def constructRoutes[
       F[_]: ExecuteToFuture: Effect: UserApi: EmailApi: OutgoingMessagesApi: PersistenceMessagesApi](
-      gmailVerificationEmailSender: Option[Email],
-      emailVerificationLinkPrefix: Option[String],
-      emailVerificationTimeout: FiniteDuration)(
+      config: Config)(
       implicit materializer: ActorMaterializer,
       jsonSupport: DomainEntitiesJsonSupport,
       IncomingApi: IncomingMessagesApi
   ): Route = {
     val routesWithoutVerify = SignIn.createRoute ~
-      SignUp.createRoute(gmailVerificationEmailSender,
-                         emailVerificationLinkPrefix,
-                         emailVerificationTimeout) ~
+      SignUp.createRoute(config.emailVerificationConfig) ~
       Status.createRoute ~
       StaticFiles.createRoute ~
       UserExists.createRoute
 
-    Verify
-      .createRoute(
-        gmailVerificationEmailSender.nonEmpty && emailVerificationLinkPrefix.nonEmpty,
-        emailVerificationTimeout)
-      .map(_ ~ routesWithoutVerify)
+    config.emailVerificationConfig
+      .map(c => Verify.createRoute(c.timeout) ~ routesWithoutVerify)
       .getOrElse(routesWithoutVerify)
   }
 }
