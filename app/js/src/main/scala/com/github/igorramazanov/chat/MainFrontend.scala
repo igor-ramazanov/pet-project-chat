@@ -34,7 +34,7 @@ object MainFrontend {
       KeepAliveMessage,
       KeepAliveMessage.Ping,
       KeepAliveMessage.Pong,
-      ValidSignUpRequest,
+      ValidSignUpOrInRequest,
       User,
       User.Id,
       User.Password,

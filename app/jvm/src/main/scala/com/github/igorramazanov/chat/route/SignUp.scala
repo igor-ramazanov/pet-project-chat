@@ -11,7 +11,10 @@ import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
 import com.github.igorramazanov.chat.api._
 import com.github.igorramazanov.chat.config.Config.EmailVerificationConfig
-import com.github.igorramazanov.chat.domain.{SignUpRequest, ValidSignUpRequest}
+import com.github.igorramazanov.chat.domain.{
+  SignUpOrInRequest,
+  ValidSignUpOrInRequest
+}
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import org.slf4j.LoggerFactory
 
@@ -30,11 +33,11 @@ object SignUp extends AbstractRoute {
     import jsonSupport._
 
     implicit val userFromRequestUnmarshaller
-      : Unmarshaller[HttpRequest, SignUpRequest] =
-      new FromRequestUnmarshaller[SignUpRequest] {
+      : Unmarshaller[HttpRequest, SignUpOrInRequest] =
+      new FromRequestUnmarshaller[SignUpOrInRequest] {
         override def apply(value: HttpRequest)(
             implicit ec: ExecutionContext,
-            materializer: Materializer): Future[SignUpRequest] = {
+            materializer: Materializer): Future[SignUpOrInRequest] = {
           import cats.data.NonEmptyChain._
           import cats.instances.string._
           import cats.syntax.show._
@@ -57,11 +60,12 @@ object SignUp extends AbstractRoute {
     withRequestTimeout(5.minutes) {
       path("signup") {
         post {
-          entity(as[SignUpRequest]) { request =>
+          entity(as[SignUpOrInRequest]) { request =>
             request.validate match {
               case Left(invalidRequest) =>
                 complete(
-                  HttpResponse(status = StatusCodes.BadRequest,
+                  HttpResponse(status = StatusCode.int2StatusCode(
+                                 HttpStatusCode.ValidationErrors.value),
                                entity =
                                  HttpEntity(MediaTypes.`application/json`,
                                             invalidRequest.toJson)))
@@ -82,7 +86,7 @@ object SignUp extends AbstractRoute {
                     logger.error(
                       s"Some error occurred during email verification start process: '${request.email}', reason: ${exception.getMessage}",
                       exception)
-                    complete(StatusCodes.InternalServerError)
+                    complete(HttpStatusCode.ServerError)
                 }
             }
           }
@@ -93,7 +97,7 @@ object SignUp extends AbstractRoute {
 
   private def signUpWithoutEmailVerification[
       F[_]: UserApi: ExecuteToFuture: Functor: EmailApi](
-      validSignUpRequest: ValidSignUpRequest) = {
+      validSignUpRequest: ValidSignUpOrInRequest) = {
     UserApi[F].save(validSignUpRequest.asUser).map {
       case Right(_) =>
         logger.debug(
@@ -108,7 +112,7 @@ object SignUp extends AbstractRoute {
 
   private def startEmailVerification[
       F[_]: UserApi: ExecuteToFuture: Monad: EmailApi](
-      request: ValidSignUpRequest) = {
+      request: ValidSignUpOrInRequest) = {
     UserApi[F].exists(request.id).flatMap { doesUserAlreadyExist =>
       if (doesUserAlreadyExist) {
         logger.debug(

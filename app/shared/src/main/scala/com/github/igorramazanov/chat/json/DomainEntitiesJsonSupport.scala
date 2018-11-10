@@ -9,8 +9,8 @@ import com.github.igorramazanov.chat.domain._
 
 trait DomainEntitiesJsonSupport {
   implicit def invalidSignUpRequestJsonApi: JsonApi[InvalidRequest]
-  implicit def signUpRequestJsonApi: JsonApi[SignUpRequest]
-  implicit def validSignUpRequestJsonApi: JsonApi[ValidSignUpRequest]
+  implicit def signUpRequestJsonApi: JsonApi[SignUpOrInRequest]
+  implicit def validSignUpRequestJsonApi: JsonApi[ValidSignUpOrInRequest]
   implicit def userJsonApi: JsonApi[User]
   implicit def incomingChatMessageJsonApi
     : JsonApi[ChatMessage.IncomingChatMessage]
@@ -24,12 +24,12 @@ object DomainEntitiesJsonSupport {
       : Either[NonEmptyChain[String], InvalidRequest] =
       jsonApi.read(s)
 
-    def toValidSignUpRequest(implicit jsonApi: JsonApi[ValidSignUpRequest])
-      : Either[NonEmptyChain[String], ValidSignUpRequest] =
+    def toValidSignUpRequest(implicit jsonApi: JsonApi[ValidSignUpOrInRequest])
+      : Either[NonEmptyChain[String], ValidSignUpOrInRequest] =
       jsonApi.read(s)
 
-    def toSignUpRequest(implicit jsonApi: JsonApi[SignUpRequest])
-      : Either[NonEmptyChain[String], SignUpRequest] =
+    def toSignUpRequest(implicit jsonApi: JsonApi[SignUpOrInRequest])
+      : Either[NonEmptyChain[String], SignUpOrInRequest] =
       jsonApi.read(s)
 
     def toGeneralMessage(implicit jsonApi: JsonApi[GeneralChatMessage])
@@ -43,20 +43,19 @@ object DomainEntitiesJsonSupport {
       jsonApi.read(s)
   }
 
-  implicit class InvalidSignUpRequestOps(val r: InvalidRequest)
-      extends AnyVal {
+  implicit class InvalidSignUpRequestOps(val r: InvalidRequest) extends AnyVal {
     def toJson(implicit jsonApi: JsonApi[InvalidRequest]): String =
       jsonApi.write(r)
   }
 
-  implicit class ValidSignUpRequestOps(val r: ValidSignUpRequest)
+  implicit class ValidSignUpRequestOps(val r: ValidSignUpOrInRequest)
       extends AnyVal {
-    def toJson(implicit jsonApi: JsonApi[ValidSignUpRequest]): String =
+    def toJson(implicit jsonApi: JsonApi[ValidSignUpOrInRequest]): String =
       jsonApi.write(r)
   }
 
-  implicit class SignUpRequestOps(val r: SignUpRequest) extends AnyVal {
-    def toJson(implicit jsonApi: JsonApi[SignUpRequest]): String =
+  implicit class SignUpRequestOps(val r: SignUpOrInRequest) extends AnyVal {
+    def toJson(implicit jsonApi: JsonApi[SignUpOrInRequest]): String =
       jsonApi.write(r)
   }
 

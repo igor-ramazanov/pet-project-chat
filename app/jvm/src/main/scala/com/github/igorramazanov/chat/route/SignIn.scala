@@ -1,6 +1,7 @@
 package com.github.igorramazanov.chat.route
 
 import akka.NotUsed
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -12,10 +13,13 @@ import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
 import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.api._
 import com.github.igorramazanov.chat.domain.ChatMessage.GeneralChatMessage
-import com.github.igorramazanov.chat.domain.{KeepAliveMessage, User}
+import com.github.igorramazanov.chat.domain.{
+  KeepAliveMessage,
+  SignUpOrInRequest,
+  User
+}
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import com.github.igorramazanov.chat.{HttpStatusCode, Utils}
-import eu.timepit.refined.types.string.NonEmptyString
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
@@ -31,45 +35,50 @@ object SignIn extends AbstractRoute {
       implicit materializer: ActorMaterializer,
       jsonSupport: DomainEntitiesJsonSupport,
       IncomingApi: IncomingMessagesApi): Route = path("signin") {
+    import jsonSupport._
+    import DomainEntitiesJsonSupport._
     get {
       parameters(("id", "email", "password")) {
         (idRaw, emailRaw, passwordRaw) =>
-          (for {
-            id <- NonEmptyString
-              .from(idRaw)
-              .map(s => User.Id.unsafeCreate(s.value))
-            email <- NonEmptyString
-              .from(emailRaw)
-              .map(s => User.Email.unsafeCreate(s.value))
-            password <- NonEmptyString
-              .from(passwordRaw)
-              .map(s => User.Password.unsafeCreate(s.value))
-          } yield {
-            logger.debug(s"Sign in request start, email: '$email'")
-            onComplete(UserApi[F].`match`(id, email, password).unsafeToFuture) {
-              case Success(Some(user)) =>
-                logger.debug(s"Sign in request success, email: '$email'")
-                onComplete(createWebSocketFlow(user).unsafeToFuture) {
-                  case Success(flow) =>
-                    handleWebSocketMessages(flow)
-                  case Failure(ex) =>
-                    logger.error(
-                      s"Couldn't create WebSocket flow for user '${user.id}'",
-                      ex)
-                    complete(HttpStatusCode.ServerError)
-                }
-              case Success(None) =>
-                logger.debug(s"Sign in request forbidden, email: '$email'")
-                complete(HttpStatusCode.InvalidCredentials)
-              case Failure(ex) =>
-                logger.error(
-                  s"Couldn't check user credentials. Email - $email, error message: ${ex.getMessage}",
-                  ex)
-                complete(HttpStatusCode.ServerError)
+          SignUpOrInRequest(idRaw, passwordRaw, emailRaw).validate.fold(
+            invalidRequest =>
+              complete(
+                HttpResponse(
+                  status = StatusCode.int2StatusCode(
+                    HttpStatusCode.ValidationErrors.value),
+                  entity = HttpEntity(MediaTypes.`application/json`,
+                                      invalidRequest.toJson))), { validRequest =>
+              logger.debug(s"Sign in request start, ${validRequest.toString}")
+              onComplete(
+                UserApi[F]
+                  .`match`(validRequest.id,
+                           validRequest.email,
+                           validRequest.password)
+                  .unsafeToFuture) {
+                case Success(Some(user)) =>
+                  logger.debug(
+                    s"Sign in request success, ${validRequest.toString}")
+                  onComplete(createWebSocketFlow(user).unsafeToFuture) {
+                    case Success(flow) =>
+                      handleWebSocketMessages(flow)
+                    case Failure(ex) =>
+                      logger.error(
+                        s"Couldn't create WebSocket flow for request '${validRequest.toString}'",
+                        ex)
+                      complete(HttpStatusCode.ServerError)
+                  }
+                case Success(None) =>
+                  logger.debug(
+                    s"Sign in request forbidden, request: '${validRequest.toString}'")
+                  complete(HttpStatusCode.InvalidCredentials)
+                case Failure(ex) =>
+                  logger.error(
+                    s"Couldn't check user credentials, request - ${validRequest.toString}, error message: ${ex.getMessage}",
+                    ex)
+                  complete(HttpStatusCode.ServerError)
+              }
             }
-          }).getOrElse {
-            complete(HttpStatusCode.ValidationErrors)
-          }
+          )
       }
     }
   }

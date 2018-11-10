@@ -143,19 +143,20 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
         )
     }
 
-  override implicit val signUpRequestJsonApi: JsonApi[SignUpRequest] =
-    new JsonApi[SignUpRequest] {
-      implicit val decoder: Decoder[SignUpRequest] =
+  override implicit val signUpRequestJsonApi: JsonApi[SignUpOrInRequest] =
+    new JsonApi[SignUpOrInRequest] {
+      implicit val decoder: Decoder[SignUpOrInRequest] =
         deriveDecoder
-      implicit val encoder: Encoder[SignUpRequest] =
+      implicit val encoder: Encoder[SignUpOrInRequest] =
         deriveEncoder
 
-      override def write(entity: SignUpRequest): String = entity.asJson.noSpaces
+      override def write(entity: SignUpOrInRequest): String =
+        entity.asJson.noSpaces
 
-      override def read(
-          jsonString: String): Either[NonEmptyChain[String], SignUpRequest] =
+      override def read(jsonString: String)
+        : Either[NonEmptyChain[String], SignUpOrInRequest] =
         io.circe.parser
-          .decode[SignUpRequest](jsonString)
+          .decode[SignUpOrInRequest](jsonString)
           .leftMap(e => NonEmptyChain.one(e.getMessage))
     }
 
@@ -187,12 +188,13 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
 
     }
 
-  override implicit val validSignUpRequestJsonApi: JsonApi[ValidSignUpRequest] =
-    new JsonApi[ValidSignUpRequest] {
-      override def write(entity: ValidSignUpRequest): String =
+  override implicit val validSignUpRequestJsonApi
+    : JsonApi[ValidSignUpOrInRequest] =
+    new JsonApi[ValidSignUpOrInRequest] {
+      override def write(entity: ValidSignUpOrInRequest): String =
         userJsonApi.write(entity.asUser)
       override def read(jsonString: String)
-        : Either[NonEmptyChain[String], ValidSignUpRequest] =
-        userJsonApi.read(jsonString).map(ValidSignUpRequest.fromUser)
+        : Either[NonEmptyChain[String], ValidSignUpOrInRequest] =
+        userJsonApi.read(jsonString).map(ValidSignUpOrInRequest.fromUser)
     }
 }

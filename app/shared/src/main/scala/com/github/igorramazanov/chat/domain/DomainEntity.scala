@@ -49,14 +49,15 @@ object KeepAliveMessage {
   }
 }
 
-final case class SignUpRequest(id: String, password: String, email: String)
+final case class SignUpOrInRequest(id: String, password: String, email: String)
     extends DomainEntity {
 
-  def validate: Either[InvalidRequest, ValidSignUpRequest] =
+  def validate: Either[InvalidRequest, ValidSignUpOrInRequest] =
     (User.Id.validate(id),
      User.Password.validate(password),
      User.Email.validate(email))
-      .mapN((id, password, email) => ValidSignUpRequest(id, password, email))
+      .mapN(
+        (id, password, email) => ValidSignUpOrInRequest(id, password, email))
       .leftMap(validationErrors =>
         InvalidRequest(validationErrors.map(_.errorMessage)))
       .toEither
@@ -65,35 +66,37 @@ final case class SignUpRequest(id: String, password: String, email: String)
     User.unsafeCreate(id, password, email)
 
   override def toString: String =
-    s"SignUpRequest(id=$id, email and password are hidden)"
+    s"SignUpOrInRequest(id=$id, email and password are hidden)"
 }
 
 final case class InvalidRequest(validationErrors: NonEmptyChain[String])
     extends DomainEntity
 
-final case class ValidSignUpRequest private (id: User.Id,
-                                             password: User.Password,
-                                             email: User.Email)
+final case class ValidSignUpOrInRequest private (id: User.Id,
+                                                 password: User.Password,
+                                                 email: User.Email)
     extends DomainEntity {
   def asUser: User = User.safeCreate(id, password, email)
 
   override def toString: String =
-    s"ValidSignUpRequest(id=${id.value}, email and password are hidden)"
+    s"ValidSignUpOrInRequest(id=${id.value}, email and password are hidden)"
 }
 
-object ValidSignUpRequest {
+object ValidSignUpOrInRequest {
   private[domain] def apply(id: User.Id,
                             password: User.Password,
-                            email: User.Email): ValidSignUpRequest =
-    new ValidSignUpRequest(id, password, email)
+                            email: User.Email): ValidSignUpOrInRequest =
+    new ValidSignUpOrInRequest(id, password, email)
 
   def unsafeCreate(id: String,
                    password: String,
-                   email: String): ValidSignUpRequest =
-    ValidSignUpRequest(User.Id(id), User.Password(password), User.Email(email))
+                   email: String): ValidSignUpOrInRequest =
+    ValidSignUpOrInRequest(User.Id(id),
+                           User.Password(password),
+                           User.Email(email))
 
-  def fromUser(user: User): ValidSignUpRequest =
-    ValidSignUpRequest(user.id, user.password, user.email)
+  def fromUser(user: User): ValidSignUpOrInRequest =
+    ValidSignUpOrInRequest(user.id, user.password, user.email)
 }
 
 final case class User private (id: User.Id,

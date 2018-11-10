@@ -12,7 +12,7 @@ import com.github.igorramazanov.chat.api.{
 }
 import com.github.igorramazanov.chat.config.Config.EmailVerificationConfig
 import com.github.igorramazanov.chat.domain.User.Email
-import com.github.igorramazanov.chat.domain.{User, ValidSignUpRequest}
+import com.github.igorramazanov.chat.domain.{User, ValidSignUpOrInRequest}
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import javax.mail.internet.{InternetAddress, MimeMessage}
 import javax.mail._
@@ -56,7 +56,7 @@ class EmailApiToKvStoreApiInterpreter[F[_]: Async: Timer](
   }
 
   override def saveRequestWithExpiration(
-      signUpRequest: ValidSignUpRequest): F[Email.VerificationId] = {
+      signUpRequest: ValidSignUpOrInRequest): F[Email.VerificationId] = {
     val rawId = java.util.UUID.randomUUID().toString
     val id = Email.VerificationId(rawId)
     kvStoreApi
@@ -69,7 +69,7 @@ class EmailApiToKvStoreApiInterpreter[F[_]: Async: Timer](
       }
   }
   override def checkRequestIsExpired(emailVerificationId: Email.VerificationId)
-    : F[Either[EmailWasNotVerifiedInTime.type, ValidSignUpRequest]] = {
+    : F[Either[EmailWasNotVerifiedInTime.type, ValidSignUpOrInRequest]] = {
     val key = emailVerificationId.value
 
     kvStoreApi.get(key).map { maybeRawSignUpRequest =>
@@ -80,7 +80,7 @@ class EmailApiToKvStoreApiInterpreter[F[_]: Async: Timer](
 
       val either = maybeSignUpRequest
         .map(_.asRight[EmailWasNotVerifiedInTime.type])
-        .getOrElse(EmailWasNotVerifiedInTime.asLeft[ValidSignUpRequest])
+        .getOrElse(EmailWasNotVerifiedInTime.asLeft[ValidSignUpOrInRequest])
 
       either.fold(
         _ =>

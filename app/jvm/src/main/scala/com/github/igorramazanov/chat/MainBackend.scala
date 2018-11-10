@@ -11,7 +11,7 @@ import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.api._
 import com.github.igorramazanov.chat.config.Config
 import com.github.igorramazanov.chat.domain.User.Email
-import com.github.igorramazanov.chat.domain.ValidSignUpRequest
+import com.github.igorramazanov.chat.domain.ValidSignUpOrInRequest
 import com.github.igorramazanov.chat.interpreter.EmailApiToKvStoreApiInterpreter
 import com.github.igorramazanov.chat.interpreter.redis.RedisInterpreters
 import com.github.igorramazanov.chat.json.{
@@ -59,13 +59,14 @@ object MainBackend {
         } getOrElse {
           val noOp = new EmailApi[EffectMonad]() {
             override def saveRequestWithExpiration(
-                signUpRequest: ValidSignUpRequest)
+                signUpRequest: ValidSignUpOrInRequest)
               : EffectMonad[Email.VerificationId] =
               ???
 
             override def checkRequestIsExpired(
                 emailVerificationId: Email.VerificationId): EffectMonad[
-              Either[EmailWasNotVerifiedInTime.type, ValidSignUpRequest]] = ???
+              Either[EmailWasNotVerifiedInTime.type, ValidSignUpOrInRequest]] =
+              ???
             override def deleteRequest(
                 emailVerificationId: Email.VerificationId): EffectMonad[Unit] =
               ???

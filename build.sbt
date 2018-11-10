@@ -79,10 +79,6 @@ val jvmSettings = Seq(
   libraryDependencies ++= Seq(
     "com.github.mpilquist" %% "simulacrum" % "0.14.0",
     "io.monix" %% "monix" % "3.0.0-RC1",
-    "com.google.oauth-client" % "google-oauth-client-jetty" % "1.26.0",
-    "com.google.api-client" % "google-api-client" % "1.26.0",
-    "com.google.apis" % "google-api-services-gmail" % "v1-rev96-1.25.0",
-    "eu.timepit" %% "refined" % "0.9.2",
     "com.typesafe.akka" %% "akka-http" % "10.1.5",
     "com.lihaoyi" %% "scalatags" % "0.6.7",
     "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.5",
