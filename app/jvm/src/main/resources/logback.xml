@@ -7,7 +7,7 @@
         </encoder>
     </appender>
 
-    <logger name="scredis" level="INFO"/>
+    <logger name="scredis" level="ERROR"/>
 
     <root level="${LOG_LEVEL}">
         <appender-ref ref="CONSOLE"/>

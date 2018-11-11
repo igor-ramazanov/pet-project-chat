@@ -5,12 +5,12 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
+import cats.syntax.all._
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import cats.Monad
+import cats.instances.string._
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
-import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.api._
 import com.github.igorramazanov.chat.domain.ChatMessage.GeneralChatMessage
 import com.github.igorramazanov.chat.domain.{
@@ -27,16 +27,14 @@ import scala.util.{Failure, Success}
 
 object SignIn extends AbstractRoute {
   private val logger = LoggerFactory.getLogger(getClass)
-  private val messageStrictTimeout = 1.minute
   private val keepAliveTimeout = 5.seconds
 
   def createRoute[
-      F[_]: UserApi: ExecuteToFuture: Monad: OutgoingMessagesApi: PersistenceMessagesApi](
-      implicit materializer: ActorMaterializer,
-      jsonSupport: DomainEntitiesJsonSupport,
-      IncomingApi: IncomingMessagesApi): Route = path("signin") {
-    import jsonSupport._
+      F[_]: UserApi: ExecuteToFuture: Monad: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
+      implicit
+      jsonSupport: DomainEntitiesJsonSupport): Route = path("signin") {
     import DomainEntitiesJsonSupport._
+    import jsonSupport._
     get {
       parameters(("id", "email", "password")) {
         (idRaw, emailRaw, passwordRaw) =>
@@ -84,70 +82,61 @@ object SignIn extends AbstractRoute {
   }
 
   private def createWebSocketFlow[
-      F[_]: ExecuteToFuture: Monad: OutgoingMessagesApi: PersistenceMessagesApi](
+      F[_]: ExecuteToFuture: Monad: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: ExecuteToFuture: RealtimeIncomingMessagesApi](
       user: User
-  )(implicit materializer: ActorMaterializer,
-    jsonSupport: DomainEntitiesJsonSupport,
-    IncomingApi: IncomingMessagesApi): F[Flow[Message, Message, NotUsed]] = {
+  )(implicit
+    jsonSupport: DomainEntitiesJsonSupport)
+    : F[Flow[Message, Message, NotUsed]] = {
     import DomainEntitiesJsonSupport._
     import jsonSupport._
 
-    val source =
-      Monad[F].map(PersistenceMessagesApi[F].ofUserOrdered(user.id)) {
-        messages =>
-          val sourcePersistent =
-            Source(messages).map(m => TextMessage(m.toJson))
-          val sourceFlow = Source
-            .fromPublisher(
-              IncomingApi
-                .subscribe(user.id.value))
-            .map(m => TextMessage(m.toJson))
-
-          sourcePersistent
-            .concat(sourceFlow)
-            .keepAlive(keepAliveTimeout,
-                       () => TextMessage(KeepAliveMessage.Pong.toString))
-            .map { m =>
-              logger.debug(s"Outgoing to user '${user.id}': $m")
-              m
-            }
+    val sourceEffect =
+      for {
+        persistenceMessagesPublisher <- PersistenceMessagesApi[F]
+          .ofUserOrdered(user.id)
+        realtimeIncomingMessagesPublisher <- RealtimeIncomingMessagesApi[F]
+          .subscribe(user.id)
+      } yield {
+        Source
+          .fromPublisher(persistenceMessagesPublisher)
+          .concat(Source.fromPublisher(realtimeIncomingMessagesPublisher))
+          .map(m => TextMessage(m.toJson))
+          .keepAlive(keepAliveTimeout,
+                     () => TextMessage(KeepAliveMessage.Pong.toString))
+          .map { m =>
+            logger.debug(s"Outgoing to user '${user.id}': $m")
+            m
+          }
       }
 
-    val saveAndPublish: GeneralChatMessage => F[Unit] = {
-      import cats.syntax.all._
-      m: GeneralChatMessage =>
-        for {
-          _ <- PersistenceMessagesApi[F].save(m.from, m)
-          _ <- PersistenceMessagesApi[F].save(m.to, m)
-          _ <- OutgoingMessagesApi[F].send(m)
-        } yield ()
-    }
-
-    val sink = Flow[Message]
-      .map { m =>
+    val parsingFlow = Flow[Message]
+      .flatMapConcat { m =>
         logger.debug(s"Incoming from user '${user.id}': $m")
-        m
+        m.asTextMessage.asScala.textStream
       }
-      .mapAsync(Runtime.getRuntime.availableProcessors())(
-        _.asTextMessage.asScala.toStrict(messageStrictTimeout))
-      .map(_.text)
-      .filter(_ != "ping")
-      .mapConcat { jsonString =>
-        jsonString.toIncomingMessage.fold(
-          { error =>
-            logger.warn(
-              s"Couldn't parse incoming websocket message: $jsonString to IncomingChatMessage, reason: $error")
-            Nil
-          },
-          m => List(m.asGeneral(user.id, Utils.currentUtcUnixEpochMillis))
-        )
+      .filterNot(KeepAliveMessage.Ping.toString === _)
+      .map { jsonString =>
+        jsonString.toIncomingMessage.map(message =>
+          message.asGeneral(user.id, Utils.currentUtcUnixEpochMillis))
       }
-      .to(Sink.foreach[GeneralChatMessage] { m =>
-        saveAndPublish(m).unsafeToFuture.discard()
-      })
+      .flatMapConcat {
+        case Left(errors) =>
+          logger.warn(
+            s"Couldn't parse incoming websocket message to IncomingChatMessage, reasons: ${errors
+              .mkString_("", ", ", "")}")
+          Source.empty[GeneralChatMessage]
+        case Right(m) => Source.single(m)
+      }
 
-    Monad[F].map(source) { s =>
-      Flow.fromSinkAndSource(sink, s)
-    }
+    for {
+      source <- sourceEffect
+      persistenceSubscriber <- PersistenceMessagesApi[F].save()
+      realtimeOutgoingSubscriber <- RealtimeOutgoingMessagesApi[F].send()
+    } yield
+      Flow.fromSinkAndSource(
+        parsingFlow
+          .alsoTo(Sink.fromSubscriber(persistenceSubscriber))
+          .to(Sink.fromSubscriber(realtimeOutgoingSubscriber)),
+        source)
   }
 }

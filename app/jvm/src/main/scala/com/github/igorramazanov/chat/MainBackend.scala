@@ -50,7 +50,8 @@ object MainBackend {
       implicit val jsonSupport: DomainEntitiesJsonSupport =
         DomainEntitiesCirceJsonSupport
 
-      val interpreters = RedisInterpreters.redis[EffectMonad](config.redisHost)
+      val (interpreters, redis) =
+        RedisInterpreters.redis[EffectMonad](config.redisHost)
       import interpreters._
       import com.github.igorramazanov.chat.interpreter.UserApiToKvStoreApiInterpreter._
       implicit val emailApi =
@@ -86,8 +87,12 @@ object MainBackend {
       sys
         .addShutdownHook {
           Await
-            .result(eventualBinding.flatMap(_.unbind()), shutdownTimeout)
+            .ready(eventualBinding.flatMap(_.terminate(shutdownTimeout)),
+                   shutdownTimeout)
             .discard()
+          Thread.sleep(2000)
+          Await.ready(redis.quit(), shutdownTimeout).discard()
+          Await.ready(actorSystem.terminate(), shutdownTimeout).discard()
         }
         .discard()
     }
@@ -110,11 +115,9 @@ object MainBackend {
   }
 
   private def constructRoutes[
-      F[_]: ExecuteToFuture: Effect: UserApi: EmailApi: OutgoingMessagesApi: PersistenceMessagesApi](
+      F[_]: ExecuteToFuture: Effect: UserApi: EmailApi: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
       config: Config)(
-      implicit materializer: ActorMaterializer,
-      jsonSupport: DomainEntitiesJsonSupport,
-      IncomingApi: IncomingMessagesApi
+      implicit jsonSupport: DomainEntitiesJsonSupport
   ): Route = {
     val routesWithoutVerify = SignIn.createRoute ~
       SignUp.createRoute(config.emailVerificationConfig) ~
