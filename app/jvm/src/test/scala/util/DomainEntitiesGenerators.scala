@@ -1,9 +1,7 @@
 package util
-import com.github.igorramazanov.chat.domain.ChatMessage.IncomingChatMessage
 import com.github.igorramazanov.chat.domain.User
 import org.scalacheck.Gen
 import org.scalatest.Matchers._
-import cats.syntax.either._
 
 import scala.language.postfixOps
 

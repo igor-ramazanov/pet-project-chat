@@ -1,4 +1,5 @@
 # Personal chat pet-project
+[![Build Status](https://travis-ci.org/igor-ramazanov/pet-project-chat.svg?branch=master)](https://travis-ci.org/igor-ramazanov/pet-project-chat)
 
 Personal pet-project I am working on for self-education purposes.
 

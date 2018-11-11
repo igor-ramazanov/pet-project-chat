@@ -1,0 +1,9 @@
+language: scala
+sudo: required
+services:
+- docker
+scala:
+- 2.12.7
+script:
+- sbt appJVM/docker:publishLocal
+- sbt appJVM/it:test

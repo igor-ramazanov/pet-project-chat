@@ -103,16 +103,7 @@ val jvmSettings = Seq(
     import scala.sys.process._
     ("docker images -q --filter dangling=true" #| "xargs docker rmi").!!
   },
-  (Docker / publishLocal) := {
-    (Docker / publishLocal).value
-    cleanDockerImages.value
-  },
   Compile / scalacOptions := ("-Xplugin:" + (baseDirectory.in(root).value / ("paradise_" + scalaVersion.value + "-2.1.1.jar")).absolutePath) +: compilerOptions,
-  (IntTest / test) := {
-    (Docker / publishLocal).value
-    cleanDockerImages.value
-    (IntTest / test).value
-  },
   (IntTest / scalacOptions) --= Seq("-Xfatal-warnings", "-deprecation"),
   (Test / scalacOptions) --= Seq("-Xfatal-warnings", "-deprecation"),
   Test / testOptions:= Seq(Tests.Filter(s => s.endsWith("Test") && !s.endsWith("ITest"))),
