@@ -5,5 +5,5 @@ services:
 scala:
 - 2.12.7
 script:
-- sbt appJVM/docker:publishLocal
-- sbt appJVM/it:test
+- sbt -Ddev.mod=true appJVM/docker:publishLocal
+- sbt -Ddev.mod=true appJVM/it:test
