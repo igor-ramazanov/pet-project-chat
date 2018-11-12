@@ -6,7 +6,6 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.testkit.TestKit
 import akka.{Done, NotUsed}
-import com.dimafeng.testcontainers.ForEachTestContainer
 import com.github.igorramazanov.chat.domain.{
   ChatMessage,
   KeepAliveMessage,
@@ -20,10 +19,8 @@ import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-trait ITestHarness
-    extends FunSuiteLike
-    with ForEachTestContainer
-    with GeneratorDrivenPropertyChecks { self: TestKit =>
+trait ITestHarness extends FunSuiteLike with GeneratorDrivenPropertyChecks {
+  self: TestKit =>
   import system.dispatcher
   protected implicit val materializer: ActorMaterializer = ActorMaterializer()
   protected implicit def flowIgnore[T]: Flow[Message, Message, NotUsed] =

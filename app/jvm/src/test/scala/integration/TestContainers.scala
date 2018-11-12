@@ -1,7 +1,7 @@
 package integration
 import com.dimafeng.testcontainers.{
   FixedHostPortGenericContainer,
-  ForEachTestContainer,
+  ForAllTestContainer,
   MultipleContainers
 }
 import com.github.igorramazanov.chat.UtilsShared._
@@ -9,7 +9,7 @@ import org.scalatest.FunSuiteLike
 import org.testcontainers.containers.output.OutputFrame
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
 
-trait TestContainers extends FunSuiteLike with ForEachTestContainer {
+trait TestContainers extends FunSuiteLike with ForAllTestContainer {
   protected lazy val redis =
     FixedHostPortGenericContainer("redis:latest",
                                   exposedContainerPort = 6379,
