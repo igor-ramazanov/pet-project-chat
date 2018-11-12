@@ -63,4 +63,6 @@ Execute the script in the root project dir:
 ./graal-build-native-executable.sh
 ```
 
+
+## WebUI
 ![Web UI](/webui.png)
