@@ -78,7 +78,7 @@ object MainBackend {
           }
           noOp
         }
-      r
+
       val eventualBinding =
         Http().bindAndHandle(constructRoutes(config), "0.0.0.0", 8080)
       eventualBinding.foreach(_ =>
