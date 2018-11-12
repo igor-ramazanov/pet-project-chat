@@ -113,7 +113,7 @@ class EmailApiToKvStoreApiInterpreter[F[_]: Async: Timer](
             message.addRecipient(Message.RecipientType.TO,
                                  new InternetAddress(to.value))
             message.setSubject(
-              "Igor Ramazanov's pet-project-char email verification")
+              "Igor Ramazanov's pet-project-chat email verification")
             message.setContent(
               s"""<p>Verify registration by clicking on <a href="${c.prefix}/verify/${emailVerificationId.value}">the link</a></p>""",
               "text/html")
