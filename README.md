@@ -55,4 +55,12 @@ Usage: pet-project-chat [options]
 4. Run the project and Redis Docker images by `docker-compose -f docker-compose-with-email-verification.ym up`
 5. Open [http://localhost:8080](http://localhost:8080) in your browser
 
+#### Building native executable ([is not supported at the moment](https://github.com/igor-ramazanov/pet-project-chat/issues/8))
+You'll need the installed [GraalVM](http://graalvm.org/) and [Scala Built Tool](https://www.scala-sbt.org).
+
+Execute the script in the root project dir:
+```bash
+./graal-build-native-executable.sh
+```
+
 ![Web UI](/webui.png)
