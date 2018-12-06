@@ -38,7 +38,10 @@ object ContactsComponent {
                          inputValidationErrors: List[String])
 
   object State {
-    def init: State = State("", isFirstTime = true, Nil)
+    def init: State =
+      State("",
+            isFirstTime = true,
+            List(IdValidationError.IsEmpty.errorMessage))
   }
 
   final class Backend($ : BackendScope[Props, State]) {

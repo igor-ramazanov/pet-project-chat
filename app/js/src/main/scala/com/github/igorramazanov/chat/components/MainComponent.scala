@@ -207,11 +207,11 @@ object MainComponent {
             case ResponseCode.ServerError.value =>
               $.modState(
                 _.addAlert(Alert(
-                  s"Couldn't check existence of used ${contact.value}, server error",
+                  s"Couldn't check existence of user ${contact.value}, server error",
                   Alert.Type.Failure)))
             case otherwise =>
               $.modState(_.addAlert(Alert(
-                s"Couldn't check existence of used ${contact.value}, server returned ${otherwise}",
+                s"Couldn't check existence of user ${contact.value}, server returned ${otherwise}",
                 Alert.Type.Failure)))
           }
       }.asCallback

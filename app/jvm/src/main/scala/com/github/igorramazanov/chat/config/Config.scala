@@ -65,8 +65,10 @@ object Config {
     fields
       .zip(values)
       .foldLeft("") {
-        case (acc, (name, value)) =>
+        case (acc, (name, value)) if !name.contains("password") =>
           acc + s"  ${name.split('$').last} = ${value.toString}\n"
+        case (acc, (name, value)) =>
+          acc + s"  ${name.split('$').last} = ${value.toString.map(_ => 'X')}\n"
       }
   }
 
