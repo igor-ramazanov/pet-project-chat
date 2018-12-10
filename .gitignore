@@ -36,3 +36,6 @@ project/.sbtserver
 # GMail API credentials
 credentials.json
 StoredCredential
+
+# Bloop
+.bloop/
