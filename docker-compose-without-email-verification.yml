@@ -6,6 +6,6 @@ services:
     - redis
     ports:
     - 8080:8080
-    command: -h redis
+    command: --redis-host redis
   redis:
     image: redis
