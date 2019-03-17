@@ -6,8 +6,8 @@ import cats.effect.{Async, Timer}
 import cats.syntax.all._
 import simulacrum.typeclass
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object Utils {
