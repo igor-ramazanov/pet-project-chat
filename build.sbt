@@ -77,7 +77,7 @@ val jvmSettings = Seq(
   name := "pet-project-chat-backend",
   mainClass := Some("com.github.igorramazanov.chat.MainBackend"),
   libraryDependencies ++= Seq(
-    "com.github.mpilquist" %% "simulacrum"           % "0.14.0",
+    "com.github.mpilquist" %% "simulacrum"           % "0.19.0",
     "io.monix"             %% "monix"                % "3.0.0-RC1",
     "com.typesafe.akka"    %% "akka-http"            % "10.1.5",
     "com.lihaoyi"          %% "scalatags"            % "0.6.7",
