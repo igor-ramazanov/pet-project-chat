@@ -55,7 +55,7 @@ val compilerOptions = Seq(
   "-Ywarn-value-discard"              // Warn when non-Unit expression results are unused.
 )
 
-scalaVersion in ThisBuild := "2.12.7"
+scalaVersion in ThisBuild := "2.12.8"
 version in ThisBuild := "1.0"
 
 lazy val root    = project.in(file("."))
