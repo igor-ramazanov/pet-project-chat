@@ -11,10 +11,7 @@ import com.github.igorramazanov.chat.Utils.ExecuteToFuture
 import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
 import com.github.igorramazanov.chat.api._
 import com.github.igorramazanov.chat.config.Config.EmailVerificationConfig
-import com.github.igorramazanov.chat.domain.{
-  SignUpOrInRequest,
-  ValidSignUpOrInRequest
-}
+import com.github.igorramazanov.chat.domain.{SignUpOrInRequest, ValidSignUpOrInRequest}
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import org.slf4j.LoggerFactory
 
@@ -23,21 +20,20 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object SignUp extends AbstractRoute {
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger               = LoggerFactory.getLogger(getClass)
   private val messageStrictTimeout = 1.minute
 
   def createRoute[F[_]: UserApi: ExecuteToFuture: Monad: EmailApi](
-      emailVerificationConfig: Option[EmailVerificationConfig])(
-      implicit jsonSupport: DomainEntitiesJsonSupport): Route = {
+      emailVerificationConfig: Option[EmailVerificationConfig]
+  )(implicit jsonSupport: DomainEntitiesJsonSupport): Route = {
     import DomainEntitiesJsonSupport._
     import jsonSupport._
 
-    implicit val userFromRequestUnmarshaller
-      : Unmarshaller[HttpRequest, SignUpOrInRequest] =
+    implicit val userFromRequestUnmarshaller: Unmarshaller[HttpRequest, SignUpOrInRequest] =
       new FromRequestUnmarshaller[SignUpOrInRequest] {
-        override def apply(value: HttpRequest)(
-            implicit ec: ExecutionContext,
-            materializer: Materializer): Future[SignUpOrInRequest] = {
+        override def apply(
+            value: HttpRequest
+        )(implicit ec: ExecutionContext, materializer: Materializer): Future[SignUpOrInRequest] = {
           import cats.data.NonEmptyChain._
           import cats.instances.string._
           import cats.syntax.show._
@@ -49,8 +45,11 @@ object SignUp extends AbstractRoute {
                 case Left(errors) =>
                   val errorsAsString = errors.show
 
-                  Future.failed(new RuntimeException(
-                    s"Couldn't unmarshall HttpRequest entity to SignUpRequest case class, entity: $entity, reasons: $errorsAsString"))
+                  Future.failed(
+                    new RuntimeException(
+                      s"Couldn't unmarshall HttpRequest entity to SignUpRequest case class, entity: $entity, reasons: $errorsAsString"
+                    )
+                  )
                 case Right(signUpRequest) => Future.successful(signUpRequest)
               }
             }
@@ -64,14 +63,15 @@ object SignUp extends AbstractRoute {
             request.validate match {
               case Left(invalidRequest) =>
                 complete(
-                  HttpResponse(status = StatusCode.int2StatusCode(
-                                 ResponseCode.ValidationErrors.value),
-                               entity =
-                                 HttpEntity(MediaTypes.`application/json`,
-                                            invalidRequest.toJson)))
+                  HttpResponse(
+                    status = StatusCode.int2StatusCode(ResponseCode.ValidationErrors.value),
+                    entity = HttpEntity(MediaTypes.`application/json`, invalidRequest.toJson)
+                  )
+                )
               case Right(validSignUpRequest) =>
                 logger.debug(
-                  s"Sending verification email process start for user: '${validSignUpRequest.toString}'")
+                  s"Sending verification email process start for user: '${validSignUpRequest.toString}'"
+                )
 
                 val signUpEffect =
                   emailVerificationConfig.map { _ =>
@@ -85,7 +85,8 @@ object SignUp extends AbstractRoute {
                   case Failure(exception) =>
                     logger.error(
                       s"Some error occurred during email verification start process: '${request.email}', reason: ${exception.getMessage}",
-                      exception)
+                      exception
+                    )
                     complete(ResponseCode.ServerError)
                 }
             }
@@ -95,46 +96,45 @@ object SignUp extends AbstractRoute {
     }
   }
 
-  private def signUpWithoutEmailVerification[
-      F[_]: UserApi: ExecuteToFuture: Functor: EmailApi](
-      validSignUpRequest: ValidSignUpOrInRequest) = {
+  private def signUpWithoutEmailVerification[F[_]: UserApi: ExecuteToFuture: Functor: EmailApi](
+      validSignUpRequest: ValidSignUpOrInRequest
+  ) =
     UserApi[F].save(validSignUpRequest.asUser).map {
       case Right(_) =>
-        logger.debug(
-          s"Successfully registered new user ${validSignUpRequest.asUser}")
+        logger.debug(s"Successfully registered new user ${validSignUpRequest.asUser}")
         complete(ResponseCode.Ok)
       case Left(UserAlreadyExists) =>
         logger.debug(
-          s"User with the same email already exists, ${validSignUpRequest.toString}, conflict")
+          s"User with the same email already exists, ${validSignUpRequest.toString}, conflict"
+        )
         complete(ResponseCode.UserAlreadyExists)
     }
-  }
 
-  private def startEmailVerification[
-      F[_]: UserApi: ExecuteToFuture: Monad: EmailApi](
-      request: ValidSignUpOrInRequest) = {
+  private def startEmailVerification[F[_]: UserApi: ExecuteToFuture: Monad: EmailApi](
+      request: ValidSignUpOrInRequest
+  ) =
     UserApi[F].exists(request.id).flatMap { doesUserAlreadyExist =>
       if (doesUserAlreadyExist) {
-        logger.debug(
-          s"User with the same email already exists, $request, conflict")
+        logger.debug(s"User with the same email already exists, $request, conflict")
         complete(ResponseCode.UserAlreadyExists).pure
       } else {
         EmailApi[F]
           .saveRequestWithExpiration(request)
-          .flatMap(EmailApi[F]
-            .sendVerificationEmail(request.email, _))
+          .flatMap(
+            EmailApi[F]
+              .sendVerificationEmail(request.email, _)
+          )
           .map {
             case Right(_) =>
-              logger.debug(
-                s"Successfully sent verification email, email: '${request.email}'")
+              logger.debug(s"Successfully sent verification email, email: '${request.email}'")
               complete(ResponseCode.SuccessfullySentVerificationEmail)
             case Left(exception) =>
               logger.error(
                 s"Couldn't send verification email: '${request.email}', reason: ${exception.getMessage}",
-                exception)
+                exception
+              )
               complete(ResponseCode.ServerError)
           }
       }
     }
-  }
 }

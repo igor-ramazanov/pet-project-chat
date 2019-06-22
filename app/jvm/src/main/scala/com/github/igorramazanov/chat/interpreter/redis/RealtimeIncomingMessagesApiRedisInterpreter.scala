@@ -13,14 +13,15 @@ import org.slf4j.LoggerFactory
 import scredis._
 
 class RealtimeIncomingMessagesApiRedisInterpreter[F[_]] private (
-    subscriberClient: () => SubscriberClient)(
+    subscriberClient: () => SubscriberClient
+)(
     implicit
     actorMaterializer: ActorMaterializer,
     jsonSupport: DomainEntitiesJsonSupport,
     A: Applicative[F]
 ) extends RealtimeIncomingMessagesApi[F] {
   private val bufferSize = 100
-  private val logger = LoggerFactory.getLogger(this.getClass)
+  private val logger     = LoggerFactory.getLogger(this.getClass)
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   override def subscribe(id: User.Id): F[Publisher[GeneralChatMessage]] = {
@@ -35,8 +36,7 @@ class RealtimeIncomingMessagesApiRedisInterpreter[F[_]] private (
           .readAs[String]
         json.toGeneralMessage match {
           case Left(error) =>
-            logger.error(
-              s"Couldn't parse json to GeneralChatMessage, json: $json, reason: $error")
+            logger.error(s"Couldn't parse json to GeneralChatMessage, json: $json, reason: $error")
           case Right(generalChatMessage) =>
             logger.debug(s"Received message to user '$id': $json")
 
@@ -54,10 +54,11 @@ object RealtimeIncomingMessagesApiRedisInterpreter {
   def apply[F[_]: Applicative](subscriberClient: () => SubscriberClient)(
       implicit
       actorMaterializer: ActorMaterializer,
-      jsonSupport: DomainEntitiesJsonSupport)
-    : RealtimeIncomingMessagesApiRedisInterpreter[F] =
+      jsonSupport: DomainEntitiesJsonSupport
+  ): RealtimeIncomingMessagesApiRedisInterpreter[F] =
     new RealtimeIncomingMessagesApiRedisInterpreter(subscriberClient)(
       actorMaterializer,
       jsonSupport,
-      implicitly[Applicative[F]])
+      implicitly[Applicative[F]]
+    )
 }

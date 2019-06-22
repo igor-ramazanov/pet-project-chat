@@ -8,10 +8,12 @@ import japgolly.scalajs.react.vdom.html_<^._
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
 object ChatComponent {
 
-  final case class Props(user: Option[User],
-                         messages: Map[User.Id, List[GeneralChatMessage]],
-                         addUser: User.Id => Callback,
-                         send: (User.Id, String) => Callback)
+  final case class Props(
+      user: Option[User],
+      messages: Map[User.Id, List[GeneralChatMessage]],
+      addUser: User.Id => Callback,
+      send: (User.Id, String) => Callback
+  )
 
   final case class State(activeContact: Option[User.Id])
 
@@ -40,20 +42,22 @@ object ChatComponent {
             ^.className := "col-md-3",
             ContactsComponent.Component(
               ContactsComponent
-                .Props(p.user,
-                       p.messages.keys.toSet,
-                       u => $.modState(_.copy(activeContact = Some(u))),
-                       p.addUser,
-                       s.activeContact))
+                .Props(
+                  p.user,
+                  p.messages.keys.toSet,
+                  u => $.modState(_.copy(activeContact = Some(u))),
+                  p.addUser,
+                  s.activeContact
+                )
+            )
           ),
           <.div(
             ^.className := "col-md-9",
-            MessagesComponent.Component(
-              MessagesComponent.Props(p.user, discussionMessages)),
+            MessagesComponent.Component(MessagesComponent.Props(p.user, discussionMessages)),
             MessageSendingComponent.Component(
-              MessageSendingComponent.Props(
-                s.activeContact.nonEmpty && p.user.nonEmpty,
-                messageSendingComponentSend))
+              MessageSendingComponent
+                .Props(s.activeContact.nonEmpty && p.user.nonEmpty, messageSendingComponentSend)
+            )
           )
         )
       )

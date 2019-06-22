@@ -8,9 +8,7 @@ trait KvStoreApi[Key, Value, F[_]] {
 
   def set(key: Key, value: Value): F[Unit]
 
-  def setWithExpiration(key: Key,
-                        value: Value,
-                        duration: FiniteDuration): F[Unit]
+  def setWithExpiration(key: Key, value: Value, duration: FiniteDuration): F[Unit]
 
   def setIfEmpty(key: Key, value: Value): F[Boolean]
 }

@@ -23,7 +23,7 @@ object MainFrontend {
       .renderIntoDOM(document.getElementById("react-app"))
   }
 
-  private def initializeObjects(): Unit = {
+  private def initializeObjects(): Unit =
     List(
       UtilsShared,
       ResponseCode,
@@ -55,5 +55,4 @@ object MainFrontend {
       EmailValidationError,
       EmailValidationError.`DoesNotContainAtLeast1@Character`
     ).discard()
-  }
 }

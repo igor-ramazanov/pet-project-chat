@@ -19,7 +19,7 @@ object RedisInterpreters {
       ec: ExecutionContext,
       jsonSupport: DomainEntitiesJsonSupport
   ): InterpretersInstances[F] = {
-    val redis = Redis.withActorSystem(host = host)
+    val redis            = Redis.withActorSystem(host = host)
     val subscriberClient = () => SubscriberClient(host = host)
     new InterpretersInstances[F] {
       val kvStoreApi: KvStoreApi[String, String, F] =

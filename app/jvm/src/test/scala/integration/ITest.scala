@@ -13,16 +13,14 @@ class ITest
     with ITestHarness
     with DomainEntitiesGenerators
     with TestContainers {
-  test(
-    "it should response with 'InvalidCredentials' if /signin for unexistent account") {
+  test("it should response with 'InvalidCredentials' if /signin for unexistent account") {
     forAll(userGen)(user => {
       val (status, _) = signIn(user)
       status shouldBe ResponseCode.InvalidCredentials.value
     })
   }
 
-  test(
-    "it should response with 'ValidationErrors' if /signin with invalid credentials") {
+  test("it should response with 'ValidationErrors' if /signin with invalid credentials") {
     forAll(invalidIdGen, invalidEmailGen, invalidPasswordGen) {
       case ((invalidId, _), (invalidEmail, _), (invalidPassword, _)) =>
         val (status, _) =
@@ -38,8 +36,7 @@ class ITest
     }
   }
 
-  test(
-    "it should response with 'ValidationErrors' if /signup with invalid credentials") {
+  test("it should response with 'ValidationErrors' if /signup with invalid credentials") {
     forAll(invalidIdGen, invalidEmailGen, invalidPasswordGen) {
       case ((invalidId, _), (invalidEmail, _), (invalidPassword, _)) =>
         val status =
@@ -49,27 +46,26 @@ class ITest
   }
 
   test("users should be able send messages to each other") {
-    forAll(userGen, userGen, Gen.listOf(Gen.alphaNumStr)) {
-      (userA, userB, payloads) =>
-        whenever(userA.id !== userB.id) {
-          signUp(userA)
-          signUp(userB)
-          val outgoingMessages =
-            payloads.map(ChatMessage.IncomingChatMessage.apply(userB.id, _))
+    forAll(userGen, userGen, Gen.listOf(Gen.alphaNumStr)) { (userA, userB, payloads) =>
+      whenever(userA.id !== userB.id) {
+        signUp(userA)
+        signUp(userB)
+        val outgoingMessages =
+          payloads.map(ChatMessage.IncomingChatMessage.apply(userB.id, _))
 
-          sendAndReceiveMessages(from = userA, outgoingMessages).discard()
-          val receivedMessages = sendAndReceiveMessages(userB, Nil)._2
+        sendAndReceiveMessages(from = userA, outgoingMessages).discard()
+        val receivedMessages = sendAndReceiveMessages(userB, Nil)._2
 
-          receivedMessages.size shouldBe outgoingMessages.size
-          receivedMessages
-            .zip(outgoingMessages)
-            .foreach {
-              case (received, sent) =>
-                received.from shouldBe userA.id
-                received.to shouldBe userB.id
-                received.payload shouldBe sent.payload
-            }
-        }
+        receivedMessages.size shouldBe outgoingMessages.size
+        receivedMessages
+          .zip(outgoingMessages)
+          .foreach {
+            case (received, sent) =>
+              received.from shouldBe userA.id
+              received.to shouldBe userB.id
+              received.payload shouldBe sent.payload
+          }
+      }
     }
   }
 }

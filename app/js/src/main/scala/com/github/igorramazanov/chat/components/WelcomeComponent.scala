@@ -24,15 +24,18 @@ object WelcomeComponent {
   final case class Props(
       signIn: (User.Id, User.Email, User.Password) => Callback,
       signUp: (User.Id, User.Email, User.Password) => Callback,
-      isInFlight: Boolean)
+      isInFlight: Boolean
+  )
 
-  final case class State(id: String,
-                         idValidationErrors: List[String],
-                         password: String,
-                         passwordValidationErrors: List[String],
-                         email: String,
-                         emailValidationErrors: List[String],
-                         isFirstTime: Boolean) {
+  final case class State(
+      id: String,
+      idValidationErrors: List[String],
+      password: String,
+      passwordValidationErrors: List[String],
+      email: String,
+      emailValidationErrors: List[String],
+      isFirstTime: Boolean
+  ) {
     def isValid: Boolean =
       idValidationErrors.isEmpty &&
         passwordValidationErrors.isEmpty &&
@@ -50,8 +53,7 @@ object WelcomeComponent {
           case Validated.Valid(_) => s.copy(idValidationErrors = Nil)
           case Validated.Invalid(errors) =>
             s.copy(
-              idValidationErrors =
-                errors.toNonEmptyList.toList.map(_.errorMessage)
+              idValidationErrors = errors.toNonEmptyList.toList.map(_.errorMessage)
             )
         }
       }
@@ -63,8 +65,7 @@ object WelcomeComponent {
             s.copy(passwordValidationErrors = Nil)
           case Validated.Invalid(errors) =>
             s.copy(
-              passwordValidationErrors =
-                errors.toNonEmptyList.toList.map(_.errorMessage)
+              passwordValidationErrors = errors.toNonEmptyList.toList.map(_.errorMessage)
             )
         }
       }
@@ -76,8 +77,7 @@ object WelcomeComponent {
             s.copy(emailValidationErrors = Nil)
           case Validated.Invalid(errors) =>
             s.copy(
-              emailValidationErrors =
-                errors.toNonEmptyList.toList.map(_.errorMessage)
+              emailValidationErrors = errors.toNonEmptyList.toList.map(_.errorMessage)
             )
         }
       }
@@ -87,10 +87,12 @@ object WelcomeComponent {
         p <- $.props
         s <- $.state
         _ <- if (s.isValid)
-          p.signIn(User.Id.unsafeCreate(s.id),
-                   User.Email.unsafeCreate(s.email),
-                   User.Password.unsafeCreate(s.password))
-        else Callback.empty
+              p.signIn(
+                User.Id.unsafeCreate(s.id),
+                User.Email.unsafeCreate(s.email),
+                User.Password.unsafeCreate(s.password)
+              )
+            else Callback.empty
       } yield ()
 
     private def signUp: CallbackTo[Unit] =
@@ -98,26 +100,24 @@ object WelcomeComponent {
         p <- $.props
         s <- $.state
         _ <- if (s.isValid)
-          p.signUp(User.Id.unsafeCreate(s.id),
-                   User.Email.unsafeCreate(s.email),
-                   User.Password.unsafeCreate(s.password))
-        else Callback.empty
+              p.signUp(
+                User.Id.unsafeCreate(s.id),
+                User.Email.unsafeCreate(s.email),
+                User.Password.unsafeCreate(s.password)
+              )
+            else Callback.empty
       } yield ()
 
     private def inputClass(isFirstTime: Boolean, isValid: Boolean) =
       if (!isFirstTime && !isValid) "form-control is-invalid"
       else "form-control"
 
-    private def button(isInFlight: Boolean, text: String, c: Callback) = {
+    private def button(isInFlight: Boolean, text: String, c: Callback) =
       if (isInFlight) {
-        <.button(^.disabled := true,
-                 ^.className := "btn btn-primary",
-                 ^.onClick --> c,
-                 text)
+        <.button(^.disabled := true, ^.className := "btn btn-primary", ^.onClick --> c, text)
       } else {
         <.button(^.className := "btn btn-primary", ^.onClick --> c, text)
       }
-    }
 
     def render(p: Props, s: State): VdomElement = {
       def validationErrorsTagMods(validationErrors: List[String]) =
@@ -145,8 +145,7 @@ object WelcomeComponent {
               ^.className := "my-2",
               <.input(
                 ^.`type` := "text",
-                ^.className := inputClass(s.isFirstTime,
-                                          s.idValidationErrors.isEmpty),
+                ^.className := inputClass(s.isFirstTime, s.idValidationErrors.isEmpty),
                 ^.placeholder := "Nickname",
                 ^.value := s.id,
                 ^.onChange ==> { e: ReactEventFromInput =>
@@ -160,14 +159,12 @@ object WelcomeComponent {
               ^.className := "my-2",
               <.input(
                 ^.`type` := "text",
-                ^.className := inputClass(s.isFirstTime,
-                                          s.emailValidationErrors.isEmpty),
+                ^.className := inputClass(s.isFirstTime, s.emailValidationErrors.isEmpty),
                 ^.placeholder := "Email",
                 ^.value := s.email,
                 ^.onChange ==> { e: ReactEventFromInput =>
                   e.persist()
-                  $.modState(_.copy(email = e.target.value,
-                                    isFirstTime = false)) >> validateEmail
+                  $.modState(_.copy(email = e.target.value, isFirstTime = false)) >> validateEmail
                 }
               ),
               emailValidationErrors
@@ -176,14 +173,12 @@ object WelcomeComponent {
               ^.className := "my-2",
               <.input(
                 ^.`type` := "password",
-                ^.className := inputClass(s.isFirstTime,
-                                          s.passwordValidationErrors.isEmpty),
+                ^.className := inputClass(s.isFirstTime, s.passwordValidationErrors.isEmpty),
                 ^.placeholder := "Password",
                 ^.value := s.password,
                 ^.onChange ==> { e: ReactEventFromInput =>
                   e.persist()
-                  $.modState(_.copy(password = e.target.value,
-                                    isFirstTime = false)) >> validatePassword
+                  $.modState(_.copy(password = e.target.value, isFirstTime = false)) >> validatePassword
                 }
               ),
               passwordValidationErrors

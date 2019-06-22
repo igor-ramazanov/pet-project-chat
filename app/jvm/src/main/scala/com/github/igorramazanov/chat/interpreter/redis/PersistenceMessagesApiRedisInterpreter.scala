@@ -16,13 +16,14 @@ import scredis._
 
 import scala.concurrent.ExecutionContext
 
-class PersistenceMessagesApiRedisInterpreter[
-    F[_]: Async: Timer: ExecuteToFuture] private (redis: Redis)(
+class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer: ExecuteToFuture] private (
+    redis: Redis
+)(
     implicit
     materializer: ActorMaterializer,
     ec: ExecutionContext,
-    jsonSupport: DomainEntitiesJsonSupport)
-    extends PersistenceMessagesApi[F] {
+    jsonSupport: DomainEntitiesJsonSupport
+) extends PersistenceMessagesApi[F] {
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val suffix = "-persistence"
   import DomainEntitiesJsonSupport._
@@ -32,14 +33,14 @@ class PersistenceMessagesApiRedisInterpreter[
     val retriableFetching: F[List[String]] = liftFromFuture(
       redis.lRange[String](id.value + suffix),
       logger
-        .error(s"Couldn't retrieve persistence message of user '$id'", _))
+        .error(s"Couldn't retrieve persistence message of user '$id'", _)
+    )
 
     val publisher = Functor[F].map(retriableFetching) { jsonStrings =>
       val messages = jsonStrings.flatMap { jsonString =>
         val result = jsonString.toGeneralMessage
         result.fold({ error =>
-          logger.warn(
-            s"Couldn't parse json: $jsonString as GeneralChatMessage, reason: $error")
+          logger.warn(s"Couldn't parse json: $jsonString as GeneralChatMessage, reason: $error")
           Nil
         }, List(_))
       }
@@ -48,25 +49,24 @@ class PersistenceMessagesApiRedisInterpreter[
     publisher
   }
 
-  override def save(): F[Subscriber[GeneralChatMessage]] = {
+  override def save(): F[Subscriber[GeneralChatMessage]] =
     Flow[GeneralChatMessage]
       .flatMapConcat { m =>
         Source
-          .fromFuture(
-            ExecuteToFuture[F].unsafeToFuture(retriableSaving(m.from, m)))
-          .concat(Source.fromFuture(
-            ExecuteToFuture[F].unsafeToFuture(retriableSaving(m.to, m))))
+          .fromFuture(ExecuteToFuture[F].unsafeToFuture(retriableSaving(m.from, m)))
+          .concat(Source.fromFuture(ExecuteToFuture[F].unsafeToFuture(retriableSaving(m.to, m))))
       }
       .to(Sink.ignore)
       .runWith(Source.asSubscriber[GeneralChatMessage])
       .pure
-  }
 
   private def retriableSaving(id: User.Id, m: GeneralChatMessage) =
     Functor[F].map(
       liftFromFuture(
         redis.rPush(id.value + suffix, m.toJson),
-        logger.error(s"Couldn't persist message of user '$id'", _)))(_ => ())
+        logger.error(s"Couldn't persist message of user '$id'", _)
+      )
+    )(_ => ())
 }
 
 object PersistenceMessagesApiRedisInterpreter {
@@ -74,7 +74,7 @@ object PersistenceMessagesApiRedisInterpreter {
       implicit
       materializer: ActorMaterializer,
       ec: ExecutionContext,
-      jsonSupport: DomainEntitiesJsonSupport)
-    : PersistenceMessagesApiRedisInterpreter[F] =
+      jsonSupport: DomainEntitiesJsonSupport
+  ): PersistenceMessagesApiRedisInterpreter[F] =
     new PersistenceMessagesApiRedisInterpreter[F](redis)
 }

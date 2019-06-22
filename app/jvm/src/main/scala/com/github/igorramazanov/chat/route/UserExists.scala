@@ -1,10 +1,5 @@
 package com.github.igorramazanov.chat.route
-import akka.http.scaladsl.model.{
-  HttpEntity,
-  HttpResponse,
-  MediaTypes,
-  StatusCode
-}
+import akka.http.scaladsl.model.{HttpEntity, HttpResponse, MediaTypes, StatusCode}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import cats.Functor
@@ -23,7 +18,8 @@ object UserExists extends AbstractRoute {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def createRoute[F[_]: ExecuteToFuture: UserApi: Functor](
-      implicit jsonSupport: DomainEntitiesJsonSupport): Route = {
+      implicit jsonSupport: DomainEntitiesJsonSupport
+  ): Route = {
     import DomainEntitiesJsonSupport._
     import jsonSupport._
     get {
@@ -34,23 +30,26 @@ object UserExists extends AbstractRoute {
             .fold(
               { validationErrors =>
                 logger.debug(
-                  s"Validation error for checking user existence ${idRaw}, ${validationErrors}")
-                complete(HttpResponse(
-                  status = StatusCode.int2StatusCode(
-                    ResponseCode.ValidationErrors.value),
-                  entity =
-                    HttpEntity(MediaTypes.`application/json`,
-                               InvalidRequest(validationErrors.flatMap(e =>
-                                 NonEmptyChain(e.errorMessage))).toJson)
-                ))
+                  s"Validation error for checking user existence ${idRaw}, ${validationErrors}"
+                )
+                complete(
+                  HttpResponse(
+                    status = StatusCode.int2StatusCode(ResponseCode.ValidationErrors.value),
+                    entity = HttpEntity(
+                      MediaTypes.`application/json`,
+                      InvalidRequest(
+                        validationErrors.flatMap(e => NonEmptyChain(e.errorMessage))
+                      ).toJson
+                    )
+                  )
+                )
               }, { id =>
                 val effect = UserApi[F].exists(id).map { exists =>
                   if (exists) {
                     logger.debug(s"Checking user existence: ${id} exists")
                     complete(ResponseCode.Ok)
                   } else {
-                    logger.debug(
-                      s"Checking user existence: ${id} does not exists")
+                    logger.debug(s"Checking user existence: ${id} does not exists")
                     complete(ResponseCode.UserDoesNotExists)
                   }
                 }
@@ -59,7 +58,8 @@ object UserExists extends AbstractRoute {
                   case Failure(exception) =>
                     logger.error(
                       s"Some error ocurred during user existing checking: '$idRaw', reason: ${exception.getMessage}",
-                      exception)
+                      exception
+                    )
                     complete(ResponseCode.ServerError)
                 }
               }

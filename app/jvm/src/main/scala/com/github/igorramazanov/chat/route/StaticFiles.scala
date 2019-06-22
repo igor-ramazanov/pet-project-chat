@@ -9,9 +9,7 @@ object StaticFiles {
     get {
       getFromResourceDirectory("") ~
         pathSingleSlash {
-          complete(
-            HttpEntity(MediaTypes.`text/html`.withCharset(HttpCharsets.`UTF-8`),
-                       page))
+          complete(HttpEntity(MediaTypes.`text/html`.withCharset(HttpCharsets.`UTF-8`), page))
         }
     }
   }
@@ -20,23 +18,27 @@ object StaticFiles {
     import scalatags.Text.all._
     val (jsDependencies, frontend) =
       if (BuildInfo.mode equalsIgnoreCase "prod") {
-        (script(
-           src := "/pet-project-chat-frontend-jsdeps.min.js",
-           lang := "JavaScript"
-         ),
-         script(
-           src := "/pet-project-chat-frontend-opt.js",
-           lang := "JavaScript"
-         ))
+        (
+          script(
+            src := "/pet-project-chat-frontend-jsdeps.min.js",
+            lang := "JavaScript"
+          ),
+          script(
+            src := "/pet-project-chat-frontend-opt.js",
+            lang := "JavaScript"
+          )
+        )
       } else {
-        (script(
-           src := "/pet-project-chat-frontend-jsdeps.js",
-           lang := "JavaScript"
-         ),
-         script(
-           src := "/pet-project-chat-frontend-fastopt.js",
-           lang := "JavaScript"
-         ))
+        (
+          script(
+            src := "/pet-project-chat-frontend-jsdeps.js",
+            lang := "JavaScript"
+          ),
+          script(
+            src := "/pet-project-chat-frontend-fastopt.js",
+            lang := "JavaScript"
+          )
+        )
       }
 
     html(

@@ -52,8 +52,8 @@ object MessagesComponent {
 
     def render(p: Props): VdomElement = {
       def message(user: User)(m: GeneralChatMessage) = {
-        val p = m.payload
-        val t = (m.dateTimeUtcEpochSeconds * 1000L).toDouble
+        val p    = m.payload
+        val t    = (m.dateTimeUtcEpochSeconds * 1000L).toDouble
         val date = new Date(t)
 
         def padd(n: Int): String = ("0" + n.toString).takeRight(2)
@@ -66,7 +66,7 @@ object MessagesComponent {
           date.getFullYear().toString
 
         def isOlderThan1Day(utcEpochSeconds: Long): Boolean = {
-          val curr = Date.now()
+          val curr   = Date.now()
           val dayAgo = (curr - 1.day.toMillis) / 1000
           utcEpochSeconds < dayAgo
         }
@@ -80,8 +80,7 @@ object MessagesComponent {
           if (user.id === m.from) Styles.messageMe
           else Styles.messageFriend,
           <.p(p, ^.className := "mb-2"),
-          <.div(^.className := "d-flex justify-content-end",
-                <.i(Styles.time, time))
+          <.div(^.className := "d-flex justify-content-end", <.i(Styles.time, time))
         )
       }
 

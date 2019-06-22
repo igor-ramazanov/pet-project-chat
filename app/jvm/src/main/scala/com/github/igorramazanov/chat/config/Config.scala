@@ -24,40 +24,33 @@ final case class Config(
 
   def emailVerificationConfig: Option[Config.EmailVerificationConfig] =
     for {
-      h <- smtpHost
+      h    <- smtpHost
       port <- smtpPort
-      f <- from
+      f    <- from
       pref <- prefix
-      t <- timeout
-    } yield
-      Config.EmailVerificationConfig(h,
-                                     port,
-                                     requireTls,
-                                     f,
-                                     user,
-                                     password,
-                                     pref,
-                                     t)
+      t    <- timeout
+    } yield Config.EmailVerificationConfig(h, port, requireTls, f, user, password, pref, t)
 
   override def toString: String = configToString[this.type](getClass, this)
 }
 
 object Config {
-  case class EmailVerificationConfig(smtpHost: String,
-                                     smtpPort: Int,
-                                     requireTls: Boolean,
-                                     from: User.Email,
-                                     user: Option[String],
-                                     password: Option[String],
-                                     prefix: String,
-                                     timeout: FiniteDuration) {
+  case class EmailVerificationConfig(
+      smtpHost: String,
+      smtpPort: Int,
+      requireTls: Boolean,
+      from: User.Email,
+      user: Option[String],
+      password: Option[String],
+      prefix: String,
+      timeout: FiniteDuration
+  ) {
     override def toString: String =
       configToString[this.type](getClass, this)
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
-  private[config] def configToString[A <: Product](clazz: Class[_],
-                                                   config: A) = {
+  private[config] def configToString[A <: Product](clazz: Class[_], config: A) = {
     val fields = clazz.getDeclaredFields
       .filterNot(_.isSynthetic)
       .map(_.getName)
@@ -92,9 +85,11 @@ object Config {
             validationErrors =>
               throw new ParseException(
                 s"Couldn't validate email from string: $s. Reasons: ${validationErrors.toString}",
-                -1),
+                -1
+              ),
             identity
-        ))
+          )
+    )
 
   val parser: OptionParser[Config] =
     new OptionParser[Config]("pet-project-chat") {
@@ -135,9 +130,9 @@ object Config {
         c.copy(prefix = x.some)
       } text "(optional) Prefix of email verification link, i.e. 'http://localhost:8080', if not provided then verification of emails be disabled"
 
-      opt[FiniteDuration]("email-verification-timeout") withFallback (
-          () => 1.day) action { (x, c) =>
-        c.copy(timeout = x.some)
+      opt[FiniteDuration]("email-verification-timeout") withFallback (() => 1.day) action {
+        (x, c) =>
+          c.copy(timeout = x.some)
       } text "(optional) email verification timeout, examples are '1 second', '9 days', '3 hours', '1 hour', default is '1 day'"
 
     }

@@ -6,5 +6,6 @@ import com.github.igorramazanov.chat.ResponseCode
 trait AbstractRoute {
   implicit val httpStatusCodeMarshaller =
     PredefinedToResponseMarshallers.fromStatusCode.compose(
-      (code: ResponseCode) => StatusCode.int2StatusCode(code.value))
+      (code: ResponseCode) => StatusCode.int2StatusCode(code.value)
+    )
 }

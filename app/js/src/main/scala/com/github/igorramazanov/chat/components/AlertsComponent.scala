@@ -30,13 +30,15 @@ object AlertsComponent {
         <.div(
           ^.className := s"alert alert-dismissible ${alert.`type`.className}",
           alert.content,
-          <.button(^.`type` := "button",
-                   ^.className := "close",
-                   ^.onClick --> p.removeAlert(alert.id),
-                   <.span(multiplicationSymbol))
+          <.button(
+            ^.`type` := "button",
+            ^.className := "close",
+            ^.onClick --> p.removeAlert(alert.id),
+            <.span(multiplicationSymbol)
+          )
         )
 
-      val alerts = p.alerts.map(alert)
+      val alerts  = p.alerts.map(alert)
       val tagMods = (^.className := "list-group") :: (Styles.alertsRightSidebar: TagMod) :: alerts
 
       <.div(tagMods: _*)

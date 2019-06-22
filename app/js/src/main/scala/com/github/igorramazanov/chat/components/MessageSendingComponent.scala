@@ -35,7 +35,7 @@ object MessageSendingComponent {
         .void
     }
 
-    private def onSend(e: ReactKeyboardEventFromInput): Callback = {
+    private def onSend(e: ReactKeyboardEventFromInput): Callback =
       $.props >>= { p: Props =>
         val message = e.target.value
         if (e.keyCode == KeyCode.Enter) {
@@ -48,7 +48,6 @@ object MessageSendingComponent {
           Callback.empty
         }
       }
-    }
 
     def render(p: Props, s: State): VdomElement = {
       val invalidClass = if (s.isInvalid) " is-invalid" else ""

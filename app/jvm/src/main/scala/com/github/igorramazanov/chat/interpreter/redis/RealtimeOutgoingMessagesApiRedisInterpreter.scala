@@ -17,23 +17,23 @@ import scredis.Redis
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class RealtimeOutgoingMessagesApiRedisInterpreter[
-    F[_]: Async: Timer: ExecuteToFuture] private (redis: Redis)(
+class RealtimeOutgoingMessagesApiRedisInterpreter[F[_]: Async: Timer: ExecuteToFuture] private (
+    redis: Redis
+)(
     implicit
     materializer: ActorMaterializer,
     ec: ExecutionContext,
-    jsonSupport: DomainEntitiesJsonSupport)
-    extends RealtimeOutgoingMessagesApi[F] {
+    jsonSupport: DomainEntitiesJsonSupport
+) extends RealtimeOutgoingMessagesApi[F] {
   import DomainEntitiesJsonSupport._
   import jsonSupport._
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  private def sendWithRetries(to: User.Id, m: String): Future[Unit] = {
+  private def sendWithRetries(to: User.Id, m: String): Future[Unit] =
     liftFromFuture(
       redis.publish(to.value, m),
       logger.error(s"Couldn't publish message to user '${to}'", _)
     ).map(_.discard()).unsafeToFuture
-  }
 
   override def send(): F[Subscriber[ChatMessage.GeneralChatMessage]] = {
 
@@ -56,7 +56,7 @@ object RealtimeOutgoingMessagesApiRedisInterpreter {
       implicit
       materializer: ActorMaterializer,
       ec: ExecutionContext,
-      jsonSupport: DomainEntitiesJsonSupport)
-    : RealtimeOutgoingMessagesApiRedisInterpreter[F] =
+      jsonSupport: DomainEntitiesJsonSupport
+  ): RealtimeOutgoingMessagesApiRedisInterpreter[F] =
     new RealtimeOutgoingMessagesApiRedisInterpreter[F](redis)
 }

@@ -31,13 +31,13 @@ import scala.concurrent.{Await, Future}
 
 object MainBackend extends TaskApp {
 
-  private lazy val logger = LoggerFactory.getLogger(this.getClass)
+  private lazy val logger     = LoggerFactory.getLogger(this.getClass)
   private val shutdownTimeout = 10.seconds
 
   override def run(args: Array[String]): Task[Unit] = {
-    implicit val actorSystem: ActorSystem = ActorSystem()
+    implicit val actorSystem: ActorSystem             = ActorSystem()
     implicit val actorMaterializer: ActorMaterializer = ActorMaterializer()
-    implicit val scheduler: Scheduler = Scheduler(actorSystem.dispatcher)
+    implicit val scheduler: Scheduler                 = Scheduler(actorSystem.dispatcher)
     implicit val e: ExecuteToFuture[Task] = new ExecuteToFuture[Task] {
       override def unsafeToFuture[A](f: Task[A]): Future[A] = f.runAsync
     }
@@ -50,10 +50,10 @@ object MainBackend extends TaskApp {
       }
   }
 
-  def program[F[_]: ExecuteToFuture: Async: Timer](config: Config,
-                                                   timeout: FiniteDuration)(
-      implicit actorSystem: ActorSystem,
-      actorMaterializer: ActorMaterializer): F[Unit] = {
+  def program[F[_]: ExecuteToFuture: Async: Timer](
+      config: Config,
+      timeout: FiniteDuration
+  )(implicit actorSystem: ActorSystem, actorMaterializer: ActorMaterializer): F[Unit] = {
 
     import actorSystem.dispatcher
 
@@ -71,20 +71,20 @@ object MainBackend extends TaskApp {
       } getOrElse {
         val noOp = new EmailApi[F]() {
           override def saveRequestWithExpiration(
-              signUpRequest: ValidSignUpOrInRequest): F[Email.VerificationId] =
+              signUpRequest: ValidSignUpOrInRequest
+          ): F[Email.VerificationId] =
             ???
 
           override def checkRequestIsExpired(
-              emailVerificationId: Email.VerificationId): F[
-            Either[EmailWasNotVerifiedInTime.type, ValidSignUpOrInRequest]] =
+              emailVerificationId: Email.VerificationId
+          ): F[Either[EmailWasNotVerifiedInTime.type, ValidSignUpOrInRequest]] =
             ???
-          override def deleteRequest(
-              emailVerificationId: Email.VerificationId): F[Unit] =
+          override def deleteRequest(emailVerificationId: Email.VerificationId): F[Unit] =
             ???
           override def sendVerificationEmail(
               to: Email,
-              emailVerificationId: Email.VerificationId)
-            : F[Either[Throwable, Unit]] = ???
+              emailVerificationId: Email.VerificationId
+          ): F[Either[Throwable, Unit]] = ???
         }
         noOp
       }
@@ -116,7 +116,8 @@ object MainBackend extends TaskApp {
   private def scheduleOnShutdownHook[F[_]: Sync](
       actorSystem: ActorSystem,
       binding: Http.ServerBinding,
-      timeout: FiniteDuration): F[Unit] = {
+      timeout: FiniteDuration
+  ): F[Unit] = {
     import actorSystem.dispatcher
     Sync[F].delay {
       sys
@@ -130,27 +131,28 @@ object MainBackend extends TaskApp {
     }
   }
 
-  private def bind[
-      F[_]: ExecuteToFuture: Async: Timer: UserApi: EmailApi: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
-      config: Config)(implicit actorSystem: ActorSystem,
-                      actorMaterializer: ActorMaterializer,
-                      domainEntitiesJsonSupport: DomainEntitiesJsonSupport) = {
+  private def bind[F[_]: ExecuteToFuture: Async: Timer: UserApi: EmailApi: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
+      config: Config
+  )(
+      implicit actorSystem: ActorSystem,
+      actorMaterializer: ActorMaterializer,
+      domainEntitiesJsonSupport: DomainEntitiesJsonSupport
+  ) = {
     import actorSystem.dispatcher
     liftFromFuture(
       {
-        Http().bindAndHandle(constructRoutes(config), "0.0.0.0", 8080).map {
-          b =>
-            logger.info("Server is listening on 8080 port")
-            b
+        Http().bindAndHandle(constructRoutes(config), "0.0.0.0", 8080).map { b =>
+          logger.info("Server is listening on 8080 port")
+          b
         }
       },
       e => logger.error(s"Couldn't bind server, ${e.getMessage}")
     )
   }
 
-  private def constructRoutes[
-      F[_]: ExecuteToFuture: Monad: UserApi: EmailApi: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
-      config: Config)(
+  private def constructRoutes[F[_]: ExecuteToFuture: Monad: UserApi: EmailApi: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
+      config: Config
+  )(
       implicit jsonSupport: DomainEntitiesJsonSupport
   ): Route = {
     val routesWithoutVerify = SignIn.createRoute ~

@@ -27,21 +27,19 @@ object ContactsComponent {
     )
   }
 
-  final case class Props(user: Option[User],
-                         contacts: Set[User.Id],
-                         focus: User.Id => Callback,
-                         addContact: User.Id => Callback,
-                         active: Option[User.Id])
+  final case class Props(
+      user: Option[User],
+      contacts: Set[User.Id],
+      focus: User.Id => Callback,
+      addContact: User.Id => Callback,
+      active: Option[User.Id]
+  )
 
-  final case class State(input: String,
-                         isFirstTime: Boolean,
-                         inputValidationErrors: List[String])
+  final case class State(input: String, isFirstTime: Boolean, inputValidationErrors: List[String])
 
   object State {
     def init: State =
-      State("",
-            isFirstTime = true,
-            List(IdValidationError.IsEmpty.errorMessage))
+      State("", isFirstTime = true, List(IdValidationError.IsEmpty.errorMessage))
   }
 
   final class Backend($ : BackendScope[Props, State]) {
@@ -55,9 +53,7 @@ object ContactsComponent {
               s.copy(inputValidationErrors = Nil)
             }
           case Validated.Invalid(errors) =>
-            s.copy(
-              inputValidationErrors =
-                errors.toNonEmptyList.toList.map(_.errorMessage))
+            s.copy(inputValidationErrors = errors.toNonEmptyList.toList.map(_.errorMessage))
         }
       }
 
@@ -67,13 +63,10 @@ object ContactsComponent {
     private def setAddNewContactInput(text: String) =
       $.modState(_.copy(input = text, isFirstTime = false))
 
-    private def isInvalid(user: Option[User],
-                          input: String,
-                          inputValidationErrors: List[String]) =
+    private def isInvalid(user: Option[User], input: String, inputValidationErrors: List[String]) =
       user.exists(_.id.value == input) || inputValidationErrors.nonEmpty
 
-    private def addNewContact(s: State)(
-        e: ReactKeyboardEventFromInput): Callback = {
+    private def addNewContact(s: State)(e: ReactKeyboardEventFromInput): Callback = {
       val newContact = e.target.value
 
       $.props >>= { p: Props =>
@@ -125,7 +118,8 @@ object ContactsComponent {
             ^.className := "w-100 form-control" + (if (!s.isFirstTime && isInvalid(
                                                          p.user,
                                                          s.input,
-                                                         s.inputValidationErrors))
+                                                         s.inputValidationErrors
+                                                       ))
                                                      " is-invalid"
                                                    else ""),
             ^.placeholder := "Add new contact",
@@ -141,8 +135,7 @@ object ContactsComponent {
       }
 
       val header =
-        <.span(^.className := "list-group-item text-center font-weight-bold",
-               "Contacts")
+        <.span(^.className := "list-group-item text-center font-weight-bold", "Contacts")
 
       val tagMods = (^.className := "list-group") :: (Styles.scroll: TagMod) :: header :: addNewContactInput :: contacts
 
