@@ -16,7 +16,7 @@ import scredis._
 
 import scala.concurrent.ExecutionContext
 
-class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer: ExecuteToFuture] private (
+class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer: ToFuture] private (
     redis: Redis
 )(
     implicit
@@ -30,7 +30,7 @@ class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer: ExecuteToFuture
   import jsonSupport._
 
   override def ofUserOrdered(id: User.Id): F[Publisher[GeneralChatMessage]] = {
-    val retriableFetching: F[List[String]] = liftFromFuture(
+    val retriableFetching: F[List[String]] = liftFromFuture[F, List[String]](
       redis.lRange[String](id.value + suffix),
       logger
         .error(s"Couldn't retrieve persistence message of user '$id'", _)
@@ -53,16 +53,16 @@ class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer: ExecuteToFuture
     Flow[GeneralChatMessage]
       .flatMapConcat { m =>
         Source
-          .fromFuture(ExecuteToFuture[F].unsafeToFuture(retriableSaving(m.from, m)))
-          .concat(Source.fromFuture(ExecuteToFuture[F].unsafeToFuture(retriableSaving(m.to, m))))
+          .fromFuture(ToFuture[F].unsafeToFuture(save(m.from, m)))
+          .concat(Source.fromFuture(ToFuture[F].unsafeToFuture(save(m.to, m))))
       }
       .to(Sink.ignore)
       .runWith(Source.asSubscriber[GeneralChatMessage])
       .pure
 
-  private def retriableSaving(id: User.Id, m: GeneralChatMessage) =
+  private def save(id: User.Id, m: GeneralChatMessage) =
     Functor[F].map(
-      liftFromFuture(
+      liftFromFuture[F, Long](
         redis.rPush(id.value + suffix, m.toJson),
         logger.error(s"Couldn't persist message of user '$id'", _)
       )
@@ -70,7 +70,7 @@ class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer: ExecuteToFuture
 }
 
 object PersistenceMessagesApiRedisInterpreter {
-  def apply[F[_]: Async: Timer: ExecuteToFuture](redis: Redis)(
+  def apply[F[_]: Async: Timer: ToFuture](redis: Redis)(
       implicit
       materializer: ActorMaterializer,
       ec: ExecutionContext,

@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import cats.effect.{Async, Timer}
 import com.github.igorramazanov.chat.InterpretersInstances
-import com.github.igorramazanov.chat.Utils.ExecuteToFuture
+import com.github.igorramazanov.chat.Utils.ToFuture
 import com.github.igorramazanov.chat.api._
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import scredis.{Redis, SubscriberClient}
@@ -12,7 +12,7 @@ import scredis.{Redis, SubscriberClient}
 import scala.concurrent.ExecutionContext
 
 object RedisInterpreters {
-  def setupInterpreters[F[_]: Async: Timer: ExecuteToFuture](host: String)(
+  def setupInterpreters[F[_]: Async: Timer: ToFuture](host: String)(
       implicit
       actorSystem: ActorSystem,
       actorMaterializer: ActorMaterializer,

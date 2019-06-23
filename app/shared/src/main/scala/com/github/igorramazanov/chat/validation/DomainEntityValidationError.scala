@@ -9,9 +9,8 @@ sealed trait DomainEntityValidationError extends Product with Serializable {
 object DomainEntityValidationError {
   type ValidationResult[A] = ValidatedNec[DomainEntityValidationError, A]
 
-  implicit val show = new Show[DomainEntityValidationError] {
-    override def show(t: DomainEntityValidationError): String = t.errorMessage
-  }
+  implicit val show: Show[DomainEntityValidationError] = (t: DomainEntityValidationError) =>
+    t.errorMessage
 }
 
 sealed trait IdValidationError extends DomainEntityValidationError

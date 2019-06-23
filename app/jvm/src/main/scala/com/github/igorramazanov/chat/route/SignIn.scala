@@ -9,8 +9,8 @@ import cats.syntax.all._
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import cats.Monad
 import cats.instances.string._
-import com.github.igorramazanov.chat.Utils.ExecuteToFuture
-import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
+import com.github.igorramazanov.chat.Utils.ToFuture
+import com.github.igorramazanov.chat.Utils.ToFuture.ops._
 import com.github.igorramazanov.chat.api._
 import com.github.igorramazanov.chat.domain.ChatMessage.GeneralChatMessage
 import com.github.igorramazanov.chat.domain.{KeepAliveMessage, SignUpOrInRequest, User}
@@ -25,7 +25,7 @@ object SignIn extends AbstractRoute {
   private val logger           = LoggerFactory.getLogger(getClass)
   private val keepAliveTimeout = 5.seconds
 
-  def createRoute[F[_]: UserApi: ExecuteToFuture: Monad: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
+  def createRoute[F[_]: UserApi: ToFuture: Monad: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
       implicit
       jsonSupport: DomainEntitiesJsonSupport
   ): Route = path("signin") {
@@ -75,7 +75,7 @@ object SignIn extends AbstractRoute {
     }
   }
 
-  private def createWebSocketFlow[F[_]: ExecuteToFuture: Monad: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: ExecuteToFuture: RealtimeIncomingMessagesApi](
+  private def createWebSocketFlow[F[_]: Monad: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: ToFuture: RealtimeIncomingMessagesApi](
       user: User
   )(
       implicit

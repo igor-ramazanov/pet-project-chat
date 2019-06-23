@@ -1,18 +1,12 @@
 package integration
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
 import com.github.igorramazanov.chat.ResponseCode
-import org.scalatest.Matchers._
 import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.domain.ChatMessage
 import org.scalacheck.Gen
+import org.scalatest.Matchers._
 import util.DomainEntitiesGenerators
 
-class ITest
-    extends TestKit(ActorSystem("chat-integration-testing"))
-    with ITestHarness
-    with DomainEntitiesGenerators
-    with TestContainers {
+class ITest extends ITestHarness with DomainEntitiesGenerators with TestContainers {
   test("it should response with 'InvalidCredentials' if /signin for unexistent account") {
     forAll(userGen)(user => {
       val (status, _) = signIn(user)

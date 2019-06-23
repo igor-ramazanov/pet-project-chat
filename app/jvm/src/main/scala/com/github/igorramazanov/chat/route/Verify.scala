@@ -3,8 +3,8 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import cats.Monad
 import com.github.igorramazanov.chat.ResponseCode
-import com.github.igorramazanov.chat.Utils.ExecuteToFuture
-import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
+import com.github.igorramazanov.chat.Utils.ToFuture
+import com.github.igorramazanov.chat.Utils.ToFuture.ops._
 import com.github.igorramazanov.chat.api.{
   EmailApi,
   EmailWasNotVerifiedInTime,
@@ -20,7 +20,7 @@ import scala.util.{Failure, Success}
 object Verify extends AbstractRoute {
   private val logger = LoggerFactory.getLogger(getClass)
 
-  def createRoute[F[_]: EmailApi: UserApi: Monad: ExecuteToFuture](
+  def createRoute[F[_]: EmailApi: UserApi: Monad: ToFuture](
       emailVerificationTimeout: FiniteDuration
   ): Route =
     path("verify" / Segment) { rawVerificationId =>

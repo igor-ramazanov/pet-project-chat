@@ -6,7 +6,7 @@ import cats.effect.{Async, Timer}
 import cats.syntax.functor._
 import cats.syntax.applicative._
 import com.github.igorramazanov.chat.Utils._
-import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
+import com.github.igorramazanov.chat.Utils.ToFuture.ops._
 import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.api.RealtimeOutgoingMessagesApi
 import com.github.igorramazanov.chat.domain.{ChatMessage, User}
@@ -17,7 +17,7 @@ import scredis.Redis
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class RealtimeOutgoingMessagesApiRedisInterpreter[F[_]: Async: Timer: ExecuteToFuture] private (
+class RealtimeOutgoingMessagesApiRedisInterpreter[F[_]: Async: Timer: ToFuture] private (
     redis: Redis
 )(
     implicit
@@ -30,9 +30,9 @@ class RealtimeOutgoingMessagesApiRedisInterpreter[F[_]: Async: Timer: ExecuteToF
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   private def sendWithRetries(to: User.Id, m: String): Future[Unit] =
-    liftFromFuture(
+    liftFromFuture[F, Long](
       redis.publish(to.value, m),
-      logger.error(s"Couldn't publish message to user '${to}'", _)
+      logger.error(s"Couldn't publish message to user '$to'", _)
     ).map(_.discard()).unsafeToFuture
 
   override def send(): F[Subscriber[ChatMessage.GeneralChatMessage]] = {
@@ -52,7 +52,7 @@ class RealtimeOutgoingMessagesApiRedisInterpreter[F[_]: Async: Timer: ExecuteToF
 }
 
 object RealtimeOutgoingMessagesApiRedisInterpreter {
-  def apply[F[_]: Async: Timer: ExecuteToFuture](redis: Redis)(
+  def apply[F[_]: Async: Timer: ToFuture](redis: Redis)(
       implicit
       materializer: ActorMaterializer,
       ec: ExecutionContext,

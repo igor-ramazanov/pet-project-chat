@@ -6,7 +6,7 @@ import cats.Functor
 import cats.data.NonEmptyChain
 import cats.syntax.functor._
 import com.github.igorramazanov.chat.ResponseCode
-import com.github.igorramazanov.chat.Utils.ExecuteToFuture
+import com.github.igorramazanov.chat.Utils.ToFuture
 import com.github.igorramazanov.chat.api.UserApi
 import com.github.igorramazanov.chat.domain.{InvalidRequest, User}
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
@@ -17,7 +17,7 @@ import scala.util.{Failure, Success}
 object UserExists extends AbstractRoute {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def createRoute[F[_]: ExecuteToFuture: UserApi: Functor](
+  def createRoute[F[_]: ToFuture: UserApi: Functor](
       implicit jsonSupport: DomainEntitiesJsonSupport
   ): Route = {
     import DomainEntitiesJsonSupport._
@@ -30,7 +30,7 @@ object UserExists extends AbstractRoute {
             .fold(
               { validationErrors =>
                 logger.debug(
-                  s"Validation error for checking user existence ${idRaw}, ${validationErrors}"
+                  s"Validation error for checking user existence $idRaw, $validationErrors"
                 )
                 complete(
                   HttpResponse(
@@ -46,14 +46,14 @@ object UserExists extends AbstractRoute {
               }, { id =>
                 val effect = UserApi[F].exists(id).map { exists =>
                   if (exists) {
-                    logger.debug(s"Checking user existence: ${id} exists")
+                    logger.debug(s"Checking user existence: $id exists")
                     complete(ResponseCode.Ok)
                   } else {
-                    logger.debug(s"Checking user existence: ${id} does not exists")
+                    logger.debug(s"Checking user existence: $id does not exists")
                     complete(ResponseCode.UserDoesNotExists)
                   }
                 }
-                onComplete(ExecuteToFuture[F].unsafeToFuture(effect)) {
+                onComplete(ToFuture[F].unsafeToFuture(effect)) {
                   case Success(route) => route
                   case Failure(exception) =>
                     logger.error(

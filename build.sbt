@@ -59,14 +59,14 @@ scalaVersion in ThisBuild := "2.12.8"
 version in ThisBuild := "1.0"
 
 lazy val root    = project.in(file("."))
-lazy val IntTest = config("it") extend (Test)
+lazy val IntTest = config("it") extend Test
 
 val sharedSettings = Seq(
   organization := "com.github.igorramazanov",
   libraryDependencies ++= Seq(
-    "io.circe" %%% "circe-core"    % "0.10.0",
-    "io.circe" %%% "circe-parser"  % "0.10.0",
-    "io.circe" %%% "circe-generic" % "0.10.0"
+    "io.circe" %%% "circe-core"    % "0.11.1",
+    "io.circe" %%% "circe-parser"  % "0.11.1",
+    "io.circe" %%% "circe-generic" % "0.11.1"
   ),
   resolvers ++= Seq(Resolver.sonatypeRepo("releases")),
   wartremoverErrors ++= Warts.unsafe,
@@ -79,20 +79,19 @@ val jvmSettings = Seq(
   libraryDependencies ++= Seq(
     "com.github.mpilquist" %% "simulacrum"           % "0.19.0",
     "io.monix"             %% "monix"                % "3.0.0-RC3",
-    "com.typesafe.akka"    %% "akka-http"            % "10.1.5",
-    "com.lihaoyi"          %% "scalatags"            % "0.6.7",
-    "com.typesafe.akka"    %% "akka-http-spray-json" % "10.1.5",
-    ("com.github.scredis" %% "scredis" % "2.1.7")
+    "com.typesafe.akka"    %% "akka-http"            % "10.1.8",
+    "com.lihaoyi"          %% "scalatags"            % "0.7.0",
+    "com.typesafe.akka"    %% "akka-http-spray-json" % "10.1.8",
+    ("com.github.scredis" %% "scredis" % "2.2.5")
       .exclude("com.typesafe.akka", s"akka-actor_${scalaBinaryVersion.value}"),
-    "com.typesafe.akka" %% "akka-stream"          % "2.5.12",
+    "com.typesafe.akka" %% "akka-stream"          % "2.5.23",
     "ch.qos.logback"    % "logback-classic"       % "1.2.3",
-    "com.github.scopt"  %% "scopt"                % "3.7.0",
+    "com.github.scopt"  %% "scopt"                % "3.7.1",
     "com.sun.mail"      % "javax.mail"            % "1.6.2",
-    "com.typesafe.akka" %% "akka-slf4j"           % "2.5.12",
-    "org.scalatest"     %% "scalatest"            % "3.0.5" % "it,test",
+    "com.typesafe.akka" %% "akka-slf4j"           % "2.5.23",
+    "org.scalatest"     %% "scalatest"            % "3.0.8" % "it,test",
     "org.scalacheck"    %% "scalacheck"           % "1.14.0" % "it,test",
-    "com.dimafeng"      %% "testcontainers-scala" % "0.21.0" % "it,test",
-    "com.typesafe.akka" %% "akka-http-testkit"    % "10.1.5" % "it,test"
+    "com.dimafeng"      %% "testcontainers-scala" % "0.26.0" % "it,test"
   ),
   (Docker / packageName) := "com.github.igorramazanov/chat",
   dockerUpdateLatest := true,

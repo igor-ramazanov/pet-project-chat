@@ -11,17 +11,11 @@ import io.circe.parser.parse
 import io.circe.syntax._
 
 object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
-  private implicit val idEncoder: Encoder[User.Id] = new Encoder[User.Id] {
-    override def apply(a: User.Id): Json = Json.fromString(a.value)
-  }
+  private implicit val idEncoder: Encoder[User.Id] = (a: User.Id) => Json.fromString(a.value)
   private implicit val passwordEncoder: Encoder[User.Password] =
-    new Encoder[User.Password] {
-      override def apply(a: User.Password): Json = Json.fromString(a.value)
-    }
+    (a: User.Password) => Json.fromString(a.value)
   private implicit val emailEncoder: Encoder[User.Email] =
-    new Encoder[User.Email] {
-      override def apply(a: User.Email): Json = Json.fromString(a.value)
-    }
+    (a: User.Email) => Json.fromString(a.value)
 
   private type DecodingAndValidationResult[A] = ValidatedNec[String, A]
 
@@ -48,13 +42,12 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
 
   //TODO replace by compile-time derivation/macro/reflection
   override implicit val userJsonApi: JsonApi[User] = new JsonApi[User] {
-    implicit val encoder: Encoder[User] = new Encoder[User] {
-      override def apply(a: User): Json = Json.obj(
+    implicit val encoder: Encoder[User] = (a: User) =>
+      Json.obj(
         "id"       -> idEncoder(a.id),
         "password" -> passwordEncoder(a.password),
         "email"    -> emailEncoder(a.email)
       )
-    }
 
     override def write(entity: User): String =
       entity.asJson.noSpaces
@@ -77,13 +70,11 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
   override implicit val incomingChatMessageJsonApi: JsonApi[ChatMessage.IncomingChatMessage] =
     new JsonApi[ChatMessage.IncomingChatMessage] {
       implicit val encoder: Encoder[ChatMessage.IncomingChatMessage] =
-        new Encoder[ChatMessage.IncomingChatMessage] {
-          override def apply(a: ChatMessage.IncomingChatMessage): Json =
-            Json.obj(
-              "to"      -> idEncoder(a.to),
-              "payload" -> Json.fromString(a.payload)
-            )
-        }
+        (a: ChatMessage.IncomingChatMessage) =>
+          Json.obj(
+            "to"      -> idEncoder(a.to),
+            "payload" -> Json.fromString(a.payload)
+          )
 
       override def write(entity: ChatMessage.IncomingChatMessage): String =
         entity.asJson.noSpaces
@@ -105,15 +96,13 @@ object DomainEntitiesCirceJsonSupport extends DomainEntitiesJsonSupport {
   override implicit val generalChatMessageJsonApi: JsonApi[ChatMessage.GeneralChatMessage] =
     new JsonApi[ChatMessage.GeneralChatMessage] {
       implicit val encoder: Encoder[ChatMessage.GeneralChatMessage] =
-        new Encoder[ChatMessage.GeneralChatMessage] {
-          override def apply(a: ChatMessage.GeneralChatMessage): Json =
-            Json.obj(
-              "to"                      -> idEncoder(a.to),
-              "from"                    -> idEncoder(a.from),
-              "payload"                 -> Json.fromString(a.payload),
-              "dateTimeUtcEpochSeconds" -> Json.fromLong(a.dateTimeUtcEpochSeconds)
-            )
-        }
+        (a: ChatMessage.GeneralChatMessage) =>
+          Json.obj(
+            "to"                      -> idEncoder(a.to),
+            "from"                    -> idEncoder(a.from),
+            "payload"                 -> Json.fromString(a.payload),
+            "dateTimeUtcEpochSeconds" -> Json.fromLong(a.dateTimeUtcEpochSeconds)
+          )
 
       override def write(entity: ChatMessage.GeneralChatMessage): String =
         entity.asJson.noSpaces

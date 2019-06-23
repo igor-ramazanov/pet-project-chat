@@ -7,8 +7,8 @@ import akka.stream.Materializer
 import cats.syntax.all._
 import cats.{Functor, Monad}
 import com.github.igorramazanov.chat.ResponseCode
-import com.github.igorramazanov.chat.Utils.ExecuteToFuture
-import com.github.igorramazanov.chat.Utils.ExecuteToFuture.ops._
+import com.github.igorramazanov.chat.Utils.ToFuture
+import com.github.igorramazanov.chat.Utils.ToFuture.ops._
 import com.github.igorramazanov.chat.api._
 import com.github.igorramazanov.chat.config.Config.EmailVerificationConfig
 import com.github.igorramazanov.chat.domain.{SignUpOrInRequest, ValidSignUpOrInRequest}
@@ -23,7 +23,7 @@ object SignUp extends AbstractRoute {
   private val logger               = LoggerFactory.getLogger(getClass)
   private val messageStrictTimeout = 1.minute
 
-  def createRoute[F[_]: UserApi: ExecuteToFuture: Monad: EmailApi](
+  def createRoute[F[_]: UserApi: ToFuture: Monad: EmailApi](
       emailVerificationConfig: Option[EmailVerificationConfig]
   )(implicit jsonSupport: DomainEntitiesJsonSupport): Route = {
     import DomainEntitiesJsonSupport._
@@ -96,7 +96,7 @@ object SignUp extends AbstractRoute {
     }
   }
 
-  private def signUpWithoutEmailVerification[F[_]: UserApi: ExecuteToFuture: Functor: EmailApi](
+  private def signUpWithoutEmailVerification[F[_]: UserApi: ToFuture: Functor: EmailApi](
       validSignUpRequest: ValidSignUpOrInRequest
   ) =
     UserApi[F].save(validSignUpRequest.asUser).map {
@@ -110,7 +110,7 @@ object SignUp extends AbstractRoute {
         complete(ResponseCode.UserAlreadyExists)
     }
 
-  private def startEmailVerification[F[_]: UserApi: ExecuteToFuture: Monad: EmailApi](
+  private def startEmailVerification[F[_]: UserApi: ToFuture: Monad: EmailApi](
       request: ValidSignUpOrInRequest
   ) =
     UserApi[F].exists(request.id).flatMap { doesUserAlreadyExist =>

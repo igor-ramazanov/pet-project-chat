@@ -46,7 +46,7 @@ object Utils {
         e.raiseError
       }
 
-  @typeclass trait ExecuteToFuture[F[_]] {
+  @typeclass trait ToFuture[F[_]] {
     def unsafeToFuture[A](f: F[A]): Future[A]
   }
 }

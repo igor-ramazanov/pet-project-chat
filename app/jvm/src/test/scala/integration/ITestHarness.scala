@@ -1,34 +1,46 @@
 package integration
+import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import akka.testkit.TestKit
 import akka.{Done, NotUsed}
 import com.github.igorramazanov.chat.domain.{ChatMessage, KeepAliveMessage, User}
 import com.github.igorramazanov.chat.json.DomainEntitiesCirceJsonSupport
 import io.circe.Json
+import org.scalacheck.Gen
 import org.scalatest.FunSuiteLike
-import org.scalatest.prop.GeneratorDrivenPropertyChecks
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-trait ITestHarness extends FunSuiteLike with GeneratorDrivenPropertyChecks {
-  self: TestKit =>
-  import system.dispatcher
+trait ITestHarness extends FunSuiteLike with ScalaCheckDrivenPropertyChecks {
+
+  protected implicit val actorSystem: ActorSystem = ActorSystem()
+  import actorSystem.dispatcher
   protected implicit val materializer: ActorMaterializer = ActorMaterializer()
   protected implicit def flowIgnore[T]: Flow[Message, Message, NotUsed] =
     Flow.fromSinkAndSource(
       Sink.ignore.asInstanceOf[Sink[Message, Future[Done]]],
       Source.empty[Message]
     )
-  protected val jsonSupport = DomainEntitiesCirceJsonSupport
+  protected val jsonSupport: DomainEntitiesCirceJsonSupport.type = DomainEntitiesCirceJsonSupport
   import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport._
   import jsonSupport._
 
-  protected val timeout = 15.seconds
+  protected val timeout: FiniteDuration = 15.seconds
+
+  // A generators .sample.get can sometimes return None, but these examples have no reason to not generate a result,
+  // so defend against that and retry if it does happen.
+  protected def sample[T](g: Gen[T]): T = {
+    def loop(i: Int): T = {
+      assert(i > 0, "Should be able to generate a sample.")
+      g.sample.fold(loop(i - 1))(identity)
+    }
+    loop(10)
+  }
 
   protected def signIn[T](user: User)(
       implicit
@@ -43,7 +55,7 @@ trait ITestHarness extends FunSuiteLike with GeneratorDrivenPropertyChecks {
     val (f, v) = Http()
       .singleWebSocketRequest(
         WebSocketRequest(
-          s"ws://localhost:8080/signin?id=${id}&password=${password}&email=${email}"
+          s"ws://localhost:8080/signin?id=$id&password=$password&email=$email"
         ),
         flow
       )
