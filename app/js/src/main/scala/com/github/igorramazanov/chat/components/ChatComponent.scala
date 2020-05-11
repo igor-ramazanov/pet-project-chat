@@ -53,10 +53,15 @@ object ChatComponent {
           ),
           <.div(
             ^.className := "col-md-9",
-            MessagesComponent.Component(MessagesComponent.Props(p.user, discussionMessages)),
+            MessagesComponent.Component(
+              MessagesComponent.Props(p.user, discussionMessages)
+            ),
             MessageSendingComponent.Component(
               MessageSendingComponent
-                .Props(s.activeContact.nonEmpty && p.user.nonEmpty, messageSendingComponentSend)
+                .Props(
+                  s.activeContact.nonEmpty && p.user.nonEmpty,
+                  messageSendingComponentSend
+                )
             )
           )
         )

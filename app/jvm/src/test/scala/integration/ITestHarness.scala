@@ -6,7 +6,11 @@ import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.{Done, NotUsed}
-import com.github.igorramazanov.chat.domain.{ChatMessage, KeepAliveMessage, User}
+import com.github.igorramazanov.chat.domain.{
+  ChatMessage,
+  KeepAliveMessage,
+  User
+}
 import com.github.igorramazanov.chat.json.DomainEntitiesCirceJsonSupport
 import io.circe.Json
 import org.scalacheck.Gen
@@ -26,7 +30,8 @@ trait ITestHarness extends FunSuiteLike with ScalaCheckDrivenPropertyChecks {
       Sink.ignore.asInstanceOf[Sink[Message, Future[Done]]],
       Source.empty[Message]
     )
-  protected val jsonSupport: DomainEntitiesCirceJsonSupport.type = DomainEntitiesCirceJsonSupport
+  protected val jsonSupport: DomainEntitiesCirceJsonSupport.type =
+    DomainEntitiesCirceJsonSupport
   import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport._
   import jsonSupport._
 
@@ -42,14 +47,12 @@ trait ITestHarness extends FunSuiteLike with ScalaCheckDrivenPropertyChecks {
     loop(10)
   }
 
-  protected def signIn[T](user: User)(
-      implicit
+  protected def signIn[T](user: User)(implicit
       flow: Flow[Message, Message, T]
   ): (Int, T) =
     signIn[T](user.id.value, user.email.value, user.password.value)
 
-  protected def signIn[T](id: String, email: String, password: String)(
-      implicit
+  protected def signIn[T](id: String, email: String, password: String)(implicit
       flow: Flow[Message, Message, T]
   ): (Int, T) = {
     val (f, v) = Http()
@@ -75,9 +78,9 @@ trait ITestHarness extends FunSuiteLike with ScalaCheckDrivenPropertyChecks {
             MediaTypes.`application/json`,
             Json
               .obj(
-                "id"       -> Json.fromString(id),
+                "id" -> Json.fromString(id),
                 "password" -> Json.fromString(password),
-                "email"    -> Json.fromString(email)
+                "email" -> Json.fromString(email)
               )
               .noSpaces
           )
@@ -101,16 +104,15 @@ trait ITestHarness extends FunSuiteLike with ScalaCheckDrivenPropertyChecks {
     )
 
     val rawMessages = f.map(
-      _.map(_.text).filterNot(
-        m => m === KeepAliveMessage.Ping.toString || m === KeepAliveMessage.Pong.toString
+      _.map(_.text).filterNot(m =>
+        m === KeepAliveMessage.Ping.toString || m === KeepAliveMessage.Pong.toString
       )
     )
-    val extractedPayloads = rawMessages.map(
-      msgs =>
-        msgs.map { msg =>
-          val message = msg.toGeneralMessage
-          message.right.get
-        }
+    val extractedPayloads = rawMessages.map(msgs =>
+      msgs.map { msg =>
+        val message = msg.toGeneralMessage
+        message.right.get
+      }
     )
 
     (status.intValue(), Await.result(extractedPayloads, timeout))

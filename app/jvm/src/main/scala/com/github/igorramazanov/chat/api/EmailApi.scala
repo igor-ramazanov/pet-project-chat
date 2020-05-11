@@ -4,7 +4,9 @@ import com.github.igorramazanov.chat.domain.ValidSignUpOrInRequest
 import simulacrum.typeclass
 
 @typeclass trait EmailApi[F[_]] {
-  def saveRequestWithExpiration(signUpRequest: ValidSignUpOrInRequest): F[Email.VerificationId]
+  def saveRequestWithExpiration(
+      signUpRequest: ValidSignUpOrInRequest
+  ): F[Email.VerificationId]
 
   def checkRequestIsExpired(
       emailVerificationId: Email.VerificationId

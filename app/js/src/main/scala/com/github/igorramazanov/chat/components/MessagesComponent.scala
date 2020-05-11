@@ -52,21 +52,21 @@ object MessagesComponent {
 
     def render(p: Props): VdomElement = {
       def message(user: User)(m: GeneralChatMessage) = {
-        val p    = m.payload
-        val t    = (m.dateTimeUtcEpochSeconds * 1000L).toDouble
+        val p = m.payload
+        val t = (m.dateTimeUtcEpochSeconds * 1000L).toDouble
         val date = new Date(t)
 
         def padd(n: Int): String = ("0" + n.toString).takeRight(2)
 
-        val timeString = padd(date.getHours()) + ":" +
-          padd(date.getMinutes()) + ":" +
-          padd(date.getSeconds())
-        val dateString = padd(date.getDate()) + "/" +
-          padd(date.getMonth() + 1) + "/" +
+        val timeString = padd(date.getHours().toInt) + ":" +
+          padd(date.getMinutes().toInt) + ":" +
+          padd(date.getSeconds().toInt)
+        val dateString = padd(date.getDate().toInt) + "/" +
+          padd(date.getMonth().toInt + 1) + "/" +
           date.getFullYear().toString
 
         def isOlderThan1Day(utcEpochSeconds: Long): Boolean = {
-          val curr   = Date.now()
+          val curr = Date.now()
           val dayAgo = (curr - 1.day.toMillis) / 1000
           utcEpochSeconds < dayAgo
         }
@@ -80,13 +80,17 @@ object MessagesComponent {
           if (user.id === m.from) Styles.messageMe
           else Styles.messageFriend,
           <.p(p, ^.className := "mb-2"),
-          <.div(^.className := "d-flex justify-content-end", <.i(Styles.time, time))
+          <.div(
+            ^.className := "d-flex justify-content-end",
+            <.i(Styles.time, time)
+          )
         )
       }
 
-      val tagMods = (^.className := "list-group scroll-messages py-4") :: (Styles.messagesScroll: TagMod) :: p.user.toList
-        .flatMap(u => p.messages.map(message(u))) ::: <.div()
-        .withRef(autoScrollToBottomRef) :: Nil
+      val tagMods =
+        (^.className := "list-group scroll-messages py-4") :: (Styles.messagesScroll: TagMod) :: p.user.toList
+          .flatMap(u => p.messages.map(message(u))) ::: <.div()
+          .withRef(autoScrollToBottomRef) :: Nil
       <.div(tagMods: _*)
     }
   }

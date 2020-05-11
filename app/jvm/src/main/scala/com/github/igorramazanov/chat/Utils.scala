@@ -25,21 +25,25 @@ object Utils {
       case e => M.raiseError(e)
     }
 
-  implicit class MonadErrorAndTimerOps[F[_], A](val `this`: F[A]) extends AnyVal {
+  implicit class MonadErrorAndTimerOps[F[_], A](val `this`: F[A])
+      extends AnyVal {
     def withRetries(implicit M: MonadError[F, Throwable], T: Timer[F]): F[A] =
       retryMonadError(`this`)(MaxRetries)
   }
 
-  def liftFromFuture[F[_]: Async: Timer, A](f: => Future[A], log: Throwable => Unit)(
-      implicit ec: ExecutionContext
+  def liftFromFuture[F[_]: Async: Timer, A](
+      f: => Future[A],
+      log: Throwable => Unit
+  )(implicit
+      ec: ExecutionContext
   ): F[A] =
     Async[F]
-      .async[A](callback => {
+      .async[A] { callback =>
         f.onComplete {
           case Success(a) => callback(a.asRight[Throwable])
           case Failure(e) => callback(e.asLeft[A])
         }
-      })
+      }
       .withRetries
       .handleErrorWith { e =>
         log(e)

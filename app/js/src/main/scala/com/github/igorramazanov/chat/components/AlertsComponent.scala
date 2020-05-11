@@ -38,8 +38,9 @@ object AlertsComponent {
           )
         )
 
-      val alerts  = p.alerts.map(alert)
-      val tagMods = (^.className := "list-group") :: (Styles.alertsRightSidebar: TagMod) :: alerts
+      val alerts = p.alerts.map(alert)
+      val tagMods =
+        (^.className := "list-group") :: (Styles.alertsRightSidebar: TagMod) :: alerts
 
       <.div(tagMods: _*)
     }

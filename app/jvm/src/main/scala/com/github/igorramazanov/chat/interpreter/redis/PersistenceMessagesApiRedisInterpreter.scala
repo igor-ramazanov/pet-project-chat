@@ -6,6 +6,9 @@ import cats.Functor
 import cats.effect.{Async, Timer}
 import cats.syntax.applicative._
 import com.github.igorramazanov.chat.Utils._
+import com.github.igorramazanov.chat.Utils.ToFuture
+import com.github.igorramazanov.chat.Utils.ToFuture._
+import com.github.igorramazanov.chat.Utils.ToFuture.ops._
 import com.github.igorramazanov.chat.api.PersistenceMessagesApi
 import com.github.igorramazanov.chat.domain.ChatMessage._
 import com.github.igorramazanov.chat.domain.User
@@ -16,10 +19,11 @@ import scredis._
 
 import scala.concurrent.ExecutionContext
 
-class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer: ToFuture] private (
+class PersistenceMessagesApiRedisInterpreter[
+    F[_]: Async: Timer: ToFuture
+] private (
     redis: Redis
-)(
-    implicit
+)(implicit
     materializer: ActorMaterializer,
     ec: ExecutionContext,
     jsonSupport: DomainEntitiesJsonSupport
@@ -39,10 +43,15 @@ class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer: ToFuture] priva
     val publisher = Functor[F].map(retriableFetching) { jsonStrings =>
       val messages = jsonStrings.flatMap { jsonString =>
         val result = jsonString.toGeneralMessage
-        result.fold({ error =>
-          logger.warn(s"Couldn't parse json: $jsonString as GeneralChatMessage, reason: $error")
-          Nil
-        }, List(_))
+        result.fold(
+          { error =>
+            logger.warn(
+              s"Couldn't parse json: $jsonString as GeneralChatMessage, reason: $error"
+            )
+            Nil
+          },
+          List(_)
+        )
       }
       Source(messages).runWith(Sink.asPublisher(fanout = true))
     }
@@ -70,8 +79,7 @@ class PersistenceMessagesApiRedisInterpreter[F[_]: Async: Timer: ToFuture] priva
 }
 
 object PersistenceMessagesApiRedisInterpreter {
-  def apply[F[_]: Async: Timer: ToFuture](redis: Redis)(
-      implicit
+  def apply[F[_]: Async: Timer: ToFuture](redis: Redis)(implicit
       materializer: ActorMaterializer,
       ec: ExecutionContext,
       jsonSupport: DomainEntitiesJsonSupport

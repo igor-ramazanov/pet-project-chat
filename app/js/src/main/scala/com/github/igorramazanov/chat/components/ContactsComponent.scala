@@ -35,11 +35,19 @@ object ContactsComponent {
       active: Option[User.Id]
   )
 
-  final case class State(input: String, isFirstTime: Boolean, inputValidationErrors: List[String])
+  final case class State(
+      input: String,
+      isFirstTime: Boolean,
+      inputValidationErrors: List[String]
+  )
 
   object State {
     def init: State =
-      State("", isFirstTime = true, List(IdValidationError.IsEmpty.errorMessage))
+      State(
+        "",
+        isFirstTime = true,
+        List(IdValidationError.IsEmpty.errorMessage)
+      )
   }
 
   final class Backend($ : BackendScope[Props, State]) {
@@ -47,13 +55,14 @@ object ContactsComponent {
       $.modState { (s, p) =>
         User.Id.validate(s.input) match {
           case Validated.Valid(id) =>
-            if (p.user.exists(_.id === id)) {
+            if (p.user.exists(_.id === id))
               s.copy(inputValidationErrors = List("You can not add yourself"))
-            } else {
+            else
               s.copy(inputValidationErrors = Nil)
-            }
           case Validated.Invalid(errors) =>
-            s.copy(inputValidationErrors = errors.toNonEmptyList.toList.map(_.errorMessage))
+            s.copy(inputValidationErrors =
+              errors.toNonEmptyList.toList.map(_.errorMessage)
+            )
         }
       }
 
@@ -63,22 +72,28 @@ object ContactsComponent {
     private def setAddNewContactInput(text: String) =
       $.modState(_.copy(input = text, isFirstTime = false))
 
-    private def isInvalid(user: Option[User], input: String, inputValidationErrors: List[String]) =
+    private def isInvalid(
+        user: Option[User],
+        input: String,
+        inputValidationErrors: List[String]
+    ) =
       user.exists(_.id.value == input) || inputValidationErrors.nonEmpty
 
-    private def addNewContact(s: State)(e: ReactKeyboardEventFromInput): Callback = {
+    private def addNewContact(
+        s: State
+    )(e: ReactKeyboardEventFromInput): Callback = {
       val newContact = e.target.value
 
       $.props >>= { p: Props =>
-        if (e.keyCode == KeyCode.Enter) {
-          if (!isInvalid(p.user, newContact, s.inputValidationErrors)) {
-            p.addContact(User.Id.unsafeCreate(newContact)) >> clearAddNewContactInput
-          } else {
+        if (e.keyCode == KeyCode.Enter)
+          if (!isInvalid(p.user, newContact, s.inputValidationErrors))
+            p.addContact(
+              User.Id.unsafeCreate(newContact)
+            ) >> clearAddNewContactInput
+          else
             Callback.empty
-          }
-        } else {
+        else
           Callback.empty
-        }
       }
     }
 
@@ -104,22 +119,24 @@ object ContactsComponent {
       val contacts = p.contacts.toList.sortBy(_.value).map(contact)
 
       val addNewContactInput = {
-        val validationErrorsTagMods = if (s.inputValidationErrors.nonEmpty) {
-          (^.className := "invalid-feedback") :: s.inputValidationErrors
-            .map(vdomNodeFromString)
-            .mkTagMod(<.br) :: Nil
-        } else {
-          (^.className := "invalid-feedback") :: Nil
-        }
+        val validationErrorsTagMods =
+          if (s.inputValidationErrors.nonEmpty)
+            (^.className := "invalid-feedback") :: s.inputValidationErrors
+              .map(vdomNodeFromString)
+              .mkTagMod(<.br) :: Nil
+          else
+            (^.className := "invalid-feedback") :: Nil
 
         <.div(
           <.input(
             ^.`type` := "text",
-            ^.className := "w-100 form-control" + (if (!s.isFirstTime && isInvalid(
-                                                         p.user,
-                                                         s.input,
-                                                         s.inputValidationErrors
-                                                       ))
+            ^.className := "w-100 form-control" + (if (
+                                                     !s.isFirstTime && isInvalid(
+                                                       p.user,
+                                                       s.input,
+                                                       s.inputValidationErrors
+                                                     )
+                                                   )
                                                      " is-invalid"
                                                    else ""),
             ^.placeholder := "Add new contact",
@@ -135,9 +152,13 @@ object ContactsComponent {
       }
 
       val header =
-        <.span(^.className := "list-group-item text-center font-weight-bold", "Contacts")
+        <.span(
+          ^.className := "list-group-item text-center font-weight-bold",
+          "Contacts"
+        )
 
-      val tagMods = (^.className := "list-group") :: (Styles.scroll: TagMod) :: header :: addNewContactInput :: contacts
+      val tagMods =
+        (^.className := "list-group") :: (Styles.scroll: TagMod) :: header :: addNewContactInput :: contacts
 
       <.div(tagMods: _*)
     }

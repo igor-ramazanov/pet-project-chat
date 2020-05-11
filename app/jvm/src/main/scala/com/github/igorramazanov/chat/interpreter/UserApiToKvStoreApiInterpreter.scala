@@ -3,7 +3,11 @@ import cats.Functor
 import cats.syntax.functor._
 import cats.syntax.eq._
 import cats.syntax.either._
-import com.github.igorramazanov.chat.api.{KvStoreApi, UserAlreadyExists, UserApi}
+import com.github.igorramazanov.chat.api.{
+  KvStoreApi,
+  UserAlreadyExists,
+  UserApi
+}
 import com.github.igorramazanov.chat.domain.User
 import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport
 import org.slf4j.LoggerFactory
@@ -11,8 +15,8 @@ import org.slf4j.LoggerFactory
 object UserApiToKvStoreApiInterpreter {
   private val logger = LoggerFactory.getLogger(getClass)
 
-  implicit def userApiToKvStoreApi[F[_]: Functor](
-      implicit kvStoreApi: KvStoreApi[String, String, F],
+  implicit def userApiToKvStoreApi[F[_]: Functor](implicit
+      kvStoreApi: KvStoreApi[String, String, F],
       jsonSupport: DomainEntitiesJsonSupport
   ): UserApi[F] =
     new UserApi[F] {
@@ -43,7 +47,9 @@ object UserApiToKvStoreApiInterpreter {
             logger.debug(s"Successfully saved if empty user: ${user.toString}")
             ().asRight[UserAlreadyExists.type]
           } else {
-            logger.debug(s"Couldn't save if empty user: ${user.toString}, already exists")
+            logger.debug(
+              s"Couldn't save if empty user: ${user.toString}, already exists"
+            )
             UserAlreadyExists.asLeft[Unit]
           })
 

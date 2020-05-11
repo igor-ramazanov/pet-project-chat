@@ -22,10 +22,14 @@ trait TestContainers extends FunSuiteLike with ForEachTestContainer {
       imageName = "com.github.igorramazanov/chat:latest",
       exposedContainerPort = 8080,
       exposedHostPort = 8080,
-      waitStrategy = new LogMessageWaitStrategy().withRegEx("[\\S\\s]*listening[\\S\\s]*")
+      waitStrategy =
+        new LogMessageWaitStrategy().withRegEx("[\\S\\s]*listening[\\S\\s]*")
     ).configure { c =>
       c.withLogConsumer((t: OutputFrame) => print(s">>> ${t.getUtf8String}"))
-      c.withCommand("--redis-host", redis.containerInfo.getNetworkSettings.getIpAddress)
+      c.withCommand(
+          "--redis-host",
+          redis.containerInfo.getNetworkSettings.getIpAddress
+        )
         .discard()
     }
 

@@ -4,7 +4,8 @@ import akka.http.scaladsl.server.Directives.{complete, path}
 import akka.http.scaladsl.server.Route
 
 object Status {
-  def createRoute: Route = path("status") {
-    complete(StatusCodes.OK)
-  }
+  def createRoute: Route =
+    path("status") {
+      complete(StatusCodes.OK)
+    }
 }

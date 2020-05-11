@@ -3,7 +3,11 @@ import com.github.igorramazanov.chat.domain.User
 import simulacrum.typeclass
 
 @typeclass trait UserApi[F[_]] {
-  def `match`(id: User.Id, email: User.Email, password: User.Password): F[Option[User]]
+  def `match`(
+      id: User.Id,
+      email: User.Email,
+      password: User.Password
+  ): F[Option[User]]
 
   def exists(id: User.Id): F[Boolean]
 

@@ -12,14 +12,13 @@ import scredis.{Redis, SubscriberClient}
 import scala.concurrent.ExecutionContext
 
 object RedisInterpreters {
-  def setupInterpreters[F[_]: Async: Timer: ToFuture](host: String)(
-      implicit
+  def setupInterpreters[F[_]: Async: Timer: ToFuture](host: String)(implicit
       actorSystem: ActorSystem,
       actorMaterializer: ActorMaterializer,
       ec: ExecutionContext,
       jsonSupport: DomainEntitiesJsonSupport
   ): InterpretersInstances[F] = {
-    val redis            = Redis.withActorSystem(host = host)
+    val redis = Redis.withActorSystem(host = host)
     val subscriberClient = () => SubscriberClient(host = host)
     new InterpretersInstances[F] {
       val kvStoreApi: KvStoreApi[String, String, F] =

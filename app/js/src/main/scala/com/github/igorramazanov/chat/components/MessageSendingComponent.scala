@@ -38,15 +38,13 @@ object MessageSendingComponent {
     private def onSend(e: ReactKeyboardEventFromInput): Callback =
       $.props >>= { p: Props =>
         val message = e.target.value
-        if (e.keyCode == KeyCode.Enter) {
-          if (message.nonEmpty) {
+        if (e.keyCode == KeyCode.Enter)
+          if (message.nonEmpty)
             p.send(message) >> $.modState(_.copy(input = ""))
-          } else {
+          else
             $.modState(_.copy(isFirstTime = false))
-          }
-        } else {
+        else
           Callback.empty
-        }
       }
 
     def render(p: Props, s: State): VdomElement = {

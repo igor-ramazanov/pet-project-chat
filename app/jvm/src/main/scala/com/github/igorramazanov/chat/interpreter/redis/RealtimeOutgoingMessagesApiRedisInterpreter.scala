@@ -6,6 +6,7 @@ import cats.effect.{Async, Timer}
 import cats.syntax.functor._
 import cats.syntax.applicative._
 import com.github.igorramazanov.chat.Utils._
+import com.github.igorramazanov.chat.Utils.ToFuture
 import com.github.igorramazanov.chat.Utils.ToFuture.ops._
 import com.github.igorramazanov.chat.UtilsShared._
 import com.github.igorramazanov.chat.api.RealtimeOutgoingMessagesApi
@@ -17,10 +18,11 @@ import scredis.Redis
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class RealtimeOutgoingMessagesApiRedisInterpreter[F[_]: Async: Timer: ToFuture] private (
+class RealtimeOutgoingMessagesApiRedisInterpreter[
+    F[_]: Async: Timer: ToFuture
+] private (
     redis: Redis
-)(
-    implicit
+)(implicit
     materializer: ActorMaterializer,
     ec: ExecutionContext,
     jsonSupport: DomainEntitiesJsonSupport
@@ -52,8 +54,7 @@ class RealtimeOutgoingMessagesApiRedisInterpreter[F[_]: Async: Timer: ToFuture] 
 }
 
 object RealtimeOutgoingMessagesApiRedisInterpreter {
-  def apply[F[_]: Async: Timer: ToFuture](redis: Redis)(
-      implicit
+  def apply[F[_]: Async: Timer: ToFuture](redis: Redis)(implicit
       materializer: ActorMaterializer,
       ec: ExecutionContext,
       jsonSupport: DomainEntitiesJsonSupport

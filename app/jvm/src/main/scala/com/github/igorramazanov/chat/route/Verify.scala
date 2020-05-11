@@ -36,18 +36,22 @@ object Verify extends AbstractRoute {
                   EmailApi[F]
                     .deleteRequest(emailVerificationId)
                     .unsafeToFuture
-                  logger.debug(s"Successfully verified user: ${request.toString}")
+                  logger
+                    .debug(s"Successfully verified user: ${request.toString}")
                   complete(ResponseCode.Ok)
                 case Left(UserAlreadyExists) =>
                   EmailApi[F]
                     .deleteRequest(emailVerificationId)
                     .unsafeToFuture
-                  logger.debug(s"User with such id already exists: ${request.toString}")
+                  logger.debug(
+                    s"User with such id already exists: ${request.toString}"
+                  )
                   complete(ResponseCode.UserAlreadyExists)
               }
             case Left(EmailWasNotVerifiedInTime) =>
               logger.debug(
-                s"Email was not verified in specified time of $emailVerificationTimeout, verification id: $rawVerificationId"
+                s"Email was not verified in specified time of ${emailVerificationTimeout
+                  .toString()}, verification id: $rawVerificationId"
               )
               complete(ResponseCode.EmailWasNotVerifiedInTime).pure
           }
@@ -61,8 +65,7 @@ object Verify extends AbstractRoute {
             )
             complete(ResponseCode.ServerError)
         }
-      } else {
+      } else
         complete(ResponseCode.ValidationErrors)
-      }
     }
 }

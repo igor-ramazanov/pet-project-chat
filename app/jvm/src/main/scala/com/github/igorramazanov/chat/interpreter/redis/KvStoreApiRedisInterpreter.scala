@@ -17,11 +17,16 @@ class KvStoreApiRedisInterpreter[F[_]: Async: Timer] private (redis: Redis)(
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   override def get(key: String): F[Option[String]] =
-    liftFromFuture(redis.get(key), logger.error(s"Couldn't 'get' value by key '$key'", _))
+    liftFromFuture(
+      redis.get(key),
+      logger.error(s"Couldn't 'get' value by key '$key'", _)
+    )
 
   override def set(key: String, value: String): F[Unit] =
-    liftFromFuture(redis.set(key, value), logger.error(s"Couldn't 'set' value by key '$key'", _))
-      .map(_.discard())
+    liftFromFuture(
+      redis.set(key, value),
+      logger.error(s"Couldn't 'set' value by key '$key'", _)
+    ).map(_.discard())
 
   override def setIfEmpty(key: String, value: String): F[Boolean] =
     liftFromFuture(
@@ -29,15 +34,21 @@ class KvStoreApiRedisInterpreter[F[_]: Async: Timer] private (redis: Redis)(
       logger.error(s"Couldn't 'setIfEmpty' value by key '$key'", _)
     )
 
-  override def setWithExpiration(key: String, value: String, duration: FiniteDuration): F[Unit] =
+  override def setWithExpiration(
+      key: String,
+      value: String,
+      duration: FiniteDuration
+  ): F[Unit] =
     liftFromFuture(
       redis.setEX(key, value, duration.toSeconds.toInt),
       logger.error(s"Couldn't 'setWithExpiration' value by key '$key'", _)
     )
 
   override def del(key: String): F[Unit] =
-    liftFromFuture(redis.del(key), logger.error(s"Couldn't delete by key '$key'", _))
-      .map(_.discard())
+    liftFromFuture(
+      redis.del(key),
+      logger.error(s"Couldn't delete by key '$key'", _)
+    ).map(_.discard())
 }
 
 object KvStoreApiRedisInterpreter {

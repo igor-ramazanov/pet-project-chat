@@ -30,20 +30,24 @@ import scala.concurrent.{Await, Future}
 
 object MainBackend extends TaskApp {
 
-  private lazy val logger     = LoggerFactory.getLogger(this.getClass)
+  private lazy val logger = LoggerFactory.getLogger(this.getClass)
   private val shutdownTimeout = 10.seconds
 
   override def run(args: List[String]): Task[ExitCode] = {
-    implicit val actorSystem: ActorSystem             = ActorSystem()
+    implicit val actorSystem: ActorSystem = ActorSystem()
     implicit val actorMaterializer: ActorMaterializer = ActorMaterializer()
-    implicit val scheduler: Scheduler                 = Scheduler(actorSystem.dispatcher)
+    implicit val scheduler: Scheduler = Scheduler(actorSystem.dispatcher)
     implicit val e: ToFuture[Task] = new ToFuture[Task] {
       override def unsafeToFuture[A](f: Task[A]): Future[A] = f.runToFuture
     }
 
     Config.parser
       .parse(args, Config.empty)
-      .fold(Task(logger.error(s"Couldn't parse configuration")) >> Task(ExitCode.Error)) { c =>
+      .fold(
+        Task(logger.error(s"Couldn't parse configuration")) >> Task(
+          ExitCode.Error
+        )
+      ) { c =>
         setLogLevel(c.logLevel)
         program(c, shutdownTimeout) >> Task(ExitCode.Success)
       }
@@ -52,7 +56,10 @@ object MainBackend extends TaskApp {
   def program[F[_]: ToFuture: Async: Timer](
       config: Config,
       timeout: FiniteDuration
-  )(implicit actorSystem: ActorSystem, actorMaterializer: ActorMaterializer): F[Unit] = {
+  )(implicit
+      actorSystem: ActorSystem,
+      actorMaterializer: ActorMaterializer
+  ): F[Unit] = {
 
     import actorSystem.dispatcher
 
@@ -78,7 +85,9 @@ object MainBackend extends TaskApp {
               emailVerificationId: Email.VerificationId
           ): F[Either[EmailWasNotVerifiedInTime.type, ValidSignUpOrInRequest]] =
             ???
-          override def deleteRequest(emailVerificationId: Email.VerificationId): F[Unit] =
+          override def deleteRequest(
+              emailVerificationId: Email.VerificationId
+          ): F[Unit] =
             ???
           override def sendVerificationEmail(
               to: Email,
@@ -95,13 +104,14 @@ object MainBackend extends TaskApp {
     } yield ()
   }
 
-  private def printJvmInfo[F[_]: Sync]: F[Unit] = Sync[F].delay {
-    val processorsMessage =
-      s"Available processors: ${Runtime.getRuntime.availableProcessors()}."
-    val maxMemoryMessage =
-      s"Max memory: ${Runtime.getRuntime.maxMemory() / 1024 / 1024} MB"
-    logger.info(processorsMessage + " " + maxMemoryMessage)
-  }
+  private def printJvmInfo[F[_]: Sync]: F[Unit] =
+    Sync[F].delay {
+      val processorsMessage =
+        s"Available processors: ${Runtime.getRuntime.availableProcessors()}."
+      val maxMemoryMessage =
+        s"Max memory: ${Runtime.getRuntime.maxMemory() / 1024 / 1024} MB"
+      logger.info(processorsMessage + " " + maxMemoryMessage)
+    }
 
   private def printAcceptedConfig[F[_]: Sync](config: Config): F[Unit] =
     Sync[F].delay {
@@ -129,29 +139,31 @@ object MainBackend extends TaskApp {
     }
   }
 
-  private def bind[F[_]: ToFuture: Async: Timer: UserApi: EmailApi: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
+  private def bind[F[
+      _
+  ]: ToFuture: Async: Timer: UserApi: EmailApi: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
       config: Config
-  )(
-      implicit actorSystem: ActorSystem,
+  )(implicit
+      actorSystem: ActorSystem,
       actorMaterializer: ActorMaterializer,
       domainEntitiesJsonSupport: DomainEntitiesJsonSupport
   ) = {
     import actorSystem.dispatcher
     liftFromFuture[F, Http.ServerBinding](
-      {
-        Http().bindAndHandle(constructRoutes(config), "0.0.0.0", 8080).map { b =>
-          logger.info("Server is listening on 8080 port")
-          b
-        }
+      Http().bindAndHandle(constructRoutes(config), "0.0.0.0", 8080).map { b =>
+        logger.info("Server is listening on 8080 port")
+        b
       },
       e => logger.error(s"Couldn't bind server, ${e.getMessage}")
     )
   }
 
-  private def constructRoutes[F[_]: ToFuture: Monad: UserApi: EmailApi: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
+  private def constructRoutes[F[
+      _
+  ]: ToFuture: Monad: UserApi: EmailApi: RealtimeOutgoingMessagesApi: PersistenceMessagesApi: RealtimeIncomingMessagesApi](
       config: Config
-  )(
-      implicit jsonSupport: DomainEntitiesJsonSupport
+  )(implicit
+      jsonSupport: DomainEntitiesJsonSupport
   ): Route = {
     val routesWithoutVerify = SignIn.createRoute ~
       SignUp.createRoute(config.emailVerificationConfig) ~

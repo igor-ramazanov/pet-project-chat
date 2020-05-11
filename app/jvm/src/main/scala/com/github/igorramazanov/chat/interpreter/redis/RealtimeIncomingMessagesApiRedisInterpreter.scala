@@ -14,14 +14,13 @@ import scredis._
 
 class RealtimeIncomingMessagesApiRedisInterpreter[F[_]] private (
     subscriberClient: () => SubscriberClient
-)(
-    implicit
+)(implicit
     actorMaterializer: ActorMaterializer,
     jsonSupport: DomainEntitiesJsonSupport,
     A: Applicative[F]
 ) extends RealtimeIncomingMessagesApi[F] {
   private val bufferSize = 100
-  private val logger     = LoggerFactory.getLogger(this.getClass)
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   override def subscribe(id: User.Id): F[Publisher[GeneralChatMessage]] = {
@@ -36,7 +35,9 @@ class RealtimeIncomingMessagesApiRedisInterpreter[F[_]] private (
           .readAs[String]
         json.toGeneralMessage match {
           case Left(error) =>
-            logger.error(s"Couldn't parse json to GeneralChatMessage, json: $json, reason: $error")
+            logger.error(
+              s"Couldn't parse json to GeneralChatMessage, json: $json, reason: $error"
+            )
           case Right(generalChatMessage) =>
             logger.debug(s"Received message to user '$id': $json")
 
@@ -45,7 +46,7 @@ class RealtimeIncomingMessagesApiRedisInterpreter[F[_]] private (
 
       case _ => ()
     }
-    subscriberClient().subscribe(id.value)(subscription).discard()
+    subscriberClient().subscribe(id.value).discard()
     A.pure(source.runWith(Sink.asPublisher(false)))
   }
 }

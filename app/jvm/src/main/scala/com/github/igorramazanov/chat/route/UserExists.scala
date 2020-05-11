@@ -1,5 +1,10 @@
 package com.github.igorramazanov.chat.route
-import akka.http.scaladsl.model.{HttpEntity, HttpResponse, MediaTypes, StatusCode}
+import akka.http.scaladsl.model.{
+  HttpEntity,
+  HttpResponse,
+  MediaTypes,
+  StatusCode
+}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import cats.Functor
@@ -17,8 +22,8 @@ import scala.util.{Failure, Success}
 object UserExists extends AbstractRoute {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def createRoute[F[_]: ToFuture: UserApi: Functor](
-      implicit jsonSupport: DomainEntitiesJsonSupport
+  def createRoute[F[_]: ToFuture: UserApi: Functor](implicit
+      jsonSupport: DomainEntitiesJsonSupport
   ): Route = {
     import DomainEntitiesJsonSupport._
     import jsonSupport._
@@ -34,22 +39,26 @@ object UserExists extends AbstractRoute {
                 )
                 complete(
                   HttpResponse(
-                    status = StatusCode.int2StatusCode(ResponseCode.ValidationErrors.value),
+                    status = StatusCode
+                      .int2StatusCode(ResponseCode.ValidationErrors.value),
                     entity = HttpEntity(
                       MediaTypes.`application/json`,
                       InvalidRequest(
-                        validationErrors.flatMap(e => NonEmptyChain(e.errorMessage))
+                        validationErrors
+                          .flatMap(e => NonEmptyChain(e.errorMessage))
                       ).toJson
                     )
                   )
                 )
-              }, { id =>
+              },
+              { id =>
                 val effect = UserApi[F].exists(id).map { exists =>
                   if (exists) {
                     logger.debug(s"Checking user existence: $id exists")
                     complete(ResponseCode.Ok)
                   } else {
-                    logger.debug(s"Checking user existence: $id does not exists")
+                    logger
+                      .debug(s"Checking user existence: $id does not exists")
                     complete(ResponseCode.UserDoesNotExists)
                   }
                 }
