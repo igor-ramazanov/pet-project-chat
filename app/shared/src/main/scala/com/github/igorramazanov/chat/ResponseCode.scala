@@ -5,28 +5,28 @@ sealed trait ResponseCode extends Product with Serializable {
 }
 
 object ResponseCode {
-  final case object UserAlreadyExists extends ResponseCode {
+  final case object UserAlreadyExists                 extends ResponseCode {
     override val value: Int = 409
   }
-  final case object UserDoesNotExists extends ResponseCode {
+  final case object UserDoesNotExists                 extends ResponseCode {
     override val value: Int = 404
   }
-  final case object InvalidCredentials extends ResponseCode {
+  final case object InvalidCredentials                extends ResponseCode {
     override val value: Int = 403
   }
   final case object SuccessfullySentVerificationEmail extends ResponseCode {
     override val value: Int = 202
   }
-  final case object Ok extends ResponseCode {
+  final case object Ok                                extends ResponseCode {
     override val value: Int = 200
   }
-  final case object EmailWasNotVerifiedInTime extends ResponseCode {
+  final case object EmailWasNotVerifiedInTime         extends ResponseCode {
     override val value: Int = 410
   }
-  final case object ValidationErrors extends ResponseCode {
+  final case object ValidationErrors                  extends ResponseCode {
     override val value: Int = 400
   }
-  final case object ServerError extends ResponseCode {
+  final case object ServerError                       extends ResponseCode {
     override val value: Int = 500
   }
 }

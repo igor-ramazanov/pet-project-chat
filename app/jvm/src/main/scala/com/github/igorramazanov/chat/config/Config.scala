@@ -24,11 +24,11 @@ final case class Config(
 
   def emailVerificationConfig: Option[Config.EmailVerificationConfig] =
     for {
-      h <- smtpHost
+      h    <- smtpHost
       port <- smtpPort
-      f <- from
+      f    <- from
       pref <- prefix
-      t <- timeout
+      t    <- timeout
     } yield Config.EmailVerificationConfig(
       h,
       port,
@@ -72,14 +72,14 @@ object Config {
       .foldLeft("") {
         case (acc, (name, value)) if !name.contains("password") =>
           acc + s"  ${name.split('$').last} = ${value.toString}\n"
-        case (acc, (name, value)) =>
+        case (acc, (name, value))                               =>
           acc + s"  ${name.split('$').last} = ${value.toString.map(_ => 'X')}\n"
       }
   }
 
   val empty = Config("", "", None, None, false, None, None, None, None, None)
 
-  private implicit val readFiniteDuration: Read[FiniteDuration] =
+  implicit private val readFiniteDuration: Read[FiniteDuration] =
     Read.durationRead.map { d =>
       if (d.isFinite)
         FiniteDuration(d.toUnit(d.unit).toLong, d.unit)
@@ -87,7 +87,7 @@ object Config {
         throw new ParseException("Duration should be finite", -1)
     }
 
-  private implicit val readEmail: Read[User.Email] =
+  implicit private val readEmail: Read[User.Email] =
     Read.stringRead.map(s =>
       User.Email
         .validate(s)
@@ -103,48 +103,61 @@ object Config {
 
   val parser: OptionParser[Config] =
     new OptionParser[Config]("pet-project-chat") {
-      help("help") text "prints this help"
-      opt[String]("redis-host").required().action { (x, c) =>
-        c.copy(redisHost = x)
-      } text "(required) host of redis used as a storage"
+      help("help").text("prints this help")
+      opt[String]("redis-host")
+        .required()
+        .action((x, c) => c.copy(redisHost = x))
+        .text("(required) host of redis used as a storage")
 
-      opt[String]("log-level").withFallback(() => "INFO").action { (x, c) =>
-        c.copy(logLevel = x)
-      } text "(optional) log level, must be one of 'OFF','ERROR','WARN','INFO','DEBUG','TRACE','ALL', default is INFO"
+      opt[String]("log-level")
+        .withFallback(() => "INFO")
+        .action((x, c) => c.copy(logLevel = x))
+        .text(
+          "(optional) log level, must be one of 'OFF','ERROR','WARN','INFO','DEBUG','TRACE','ALL', default is INFO"
+        )
 
-      opt[String]("smtp-host").action { (x, c) =>
-        c.copy(smtpHost = x.some)
-      } text "(optional) SMTP host, if not provided then verification of emails be disabled"
+      opt[String]("smtp-host")
+        .action((x, c) => c.copy(smtpHost = x.some))
+        .text(
+          "(optional) SMTP host, if not provided then verification of emails be disabled"
+        )
 
-      opt[Int]("smtp-port").action { (x, c) =>
-        c.copy(smtpPort = x.some)
-      } text "(optional) SMTP port, if not provided then verification of emails be disabled"
+      opt[Int]("smtp-port")
+        .action((x, c) => c.copy(smtpPort = x.some))
+        .text(
+          "(optional) SMTP port, if not provided then verification of emails be disabled"
+        )
 
-      opt[Unit]("smtp-tls").action { (_, c) =>
-        c.copy(requireTls = true)
-      } text "(optional) Use TLS for SMTP"
+      opt[Unit]("smtp-tls")
+        .action((_, c) => c.copy(requireTls = true))
+        .text("(optional) Use TLS for SMTP")
 
-      opt[User.Email]("smtp-from").action { (x, c) =>
-        c.copy(from = x.some)
-      } text "(optional) 'from' field of verification emails, if not provided then verification of emails be disabled"
+      opt[User.Email]("smtp-from")
+        .action((x, c) => c.copy(from = x.some))
+        .text(
+          "(optional) 'from' field of verification emails, if not provided then verification of emails be disabled"
+        )
 
-      opt[String]("smtp-user").action { (x, c) =>
-        c.copy(user = x.some)
-      } text "(optional) User for SMTP server"
+      opt[String]("smtp-user")
+        .action((x, c) => c.copy(user = x.some))
+        .text("(optional) User for SMTP server")
 
-      opt[String]("smtp-password").action { (x, c) =>
-        c.copy(password = x.some)
-      } text "(optional) Password for SMTP server"
+      opt[String]("smtp-password")
+        .action((x, c) => c.copy(password = x.some))
+        .text("(optional) Password for SMTP server")
 
-      opt[String]("verification-link-prefix").action { (x, c) =>
-        c.copy(prefix = x.some)
-      } text "(optional) Prefix of email verification link, i.e. 'http://localhost:8080', if not provided then verification of emails be disabled"
+      opt[String]("verification-link-prefix")
+        .action((x, c) => c.copy(prefix = x.some))
+        .text(
+          "(optional) Prefix of email verification link, i.e. 'http://localhost:8080', if not provided then verification of emails be disabled"
+        )
 
       opt[FiniteDuration]("email-verification-timeout")
         .withFallback(() => 1.day)
-        .action { (x, c) =>
-          c.copy(timeout = x.some)
-        } text "(optional) email verification timeout, examples are '1 second', '9 days', '3 hours', '1 hour', default is '1 day'"
+        .action((x, c) => c.copy(timeout = x.some))
+        .text(
+          "(optional) email verification timeout, examples are '1 second', '9 days', '3 hours', '1 hour', default is '1 day'"
+        )
 
     }
 }

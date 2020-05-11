@@ -63,7 +63,7 @@ object UserExists extends AbstractRoute {
                   }
                 }
                 onComplete(ToFuture[F].unsafeToFuture(effect)) {
-                  case Success(route) => route
+                  case Success(route)     => route
                   case Failure(exception) =>
                     logger.error(
                       s"Some error ocurred during user existing checking: '$idRaw', reason: ${exception.getMessage}",

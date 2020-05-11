@@ -30,7 +30,7 @@ object IdValidationError {
 sealed trait PasswordValidationError extends DomainEntityValidationError
 
 object PasswordValidationError {
-  final case object LessThan10Characters extends PasswordValidationError {
+  final case object LessThan10Characters    extends PasswordValidationError {
     override def errorMessage: String =
       "Password length should not be less than 10 characters"
   }

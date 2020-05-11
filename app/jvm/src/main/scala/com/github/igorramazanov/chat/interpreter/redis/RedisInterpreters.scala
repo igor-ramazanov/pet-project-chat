@@ -18,16 +18,16 @@ object RedisInterpreters {
       ec: ExecutionContext,
       jsonSupport: DomainEntitiesJsonSupport
   ): InterpretersInstances[F] = {
-    val redis = Redis.withActorSystem(host = host)
+    val redis            = Redis.withActorSystem(host = host)
     val subscriberClient = () => SubscriberClient(host = host)
     new InterpretersInstances[F] {
-      val kvStoreApi: KvStoreApi[String, String, F] =
+      val kvStoreApi: KvStoreApi[String, String, F]   =
         KvStoreApiRedisInterpreter[F](redis)
       val outgoingApi: RealtimeOutgoingMessagesApi[F] =
         RealtimeOutgoingMessagesApiRedisInterpreter[F](redis)
       val incomingApi: RealtimeIncomingMessagesApi[F] =
         RealtimeIncomingMessagesApiRedisInterpreter(subscriberClient)
-      val persistenceApi: PersistenceMessagesApi[F] =
+      val persistenceApi: PersistenceMessagesApi[F]   =
         PersistenceMessagesApiRedisInterpreter[F](redis)
     }
   }

@@ -54,7 +54,7 @@ object ContactsComponent {
     private def validateNewContact: CallbackTo[Unit] =
       $.modState { (s, p) =>
         User.Id.validate(s.input) match {
-          case Validated.Valid(id) =>
+          case Validated.Valid(id)       =>
             if (p.user.exists(_.id === id))
               s.copy(inputValidationErrors = List("You can not add yourself"))
             else
@@ -99,7 +99,7 @@ object ContactsComponent {
 
     def render(p: Props, s: State): VdomElement = {
       def contact(u: User.Id) = {
-        val isActive = p.active.contains(u)
+        val isActive  = p.active.contains(u)
         val className =
           s"list-group-item list-group-item-action${if (isActive) " active"
           else ""}"

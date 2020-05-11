@@ -22,15 +22,15 @@ import scala.concurrent.{Await, Future}
 
 trait ITestHarness extends FunSuiteLike with ScalaCheckDrivenPropertyChecks {
 
-  protected implicit val actorSystem: ActorSystem = ActorSystem()
+  implicit protected val actorSystem: ActorSystem                       = ActorSystem()
   import actorSystem.dispatcher
-  protected implicit val materializer: ActorMaterializer = ActorMaterializer()
-  protected implicit def flowIgnore[T]: Flow[Message, Message, NotUsed] =
+  implicit protected val materializer: ActorMaterializer                = ActorMaterializer()
+  implicit protected def flowIgnore[T]: Flow[Message, Message, NotUsed] =
     Flow.fromSinkAndSource(
       Sink.ignore.asInstanceOf[Sink[Message, Future[Done]]],
       Source.empty[Message]
     )
-  protected val jsonSupport: DomainEntitiesCirceJsonSupport.type =
+  protected val jsonSupport: DomainEntitiesCirceJsonSupport.type        =
     DomainEntitiesCirceJsonSupport
   import com.github.igorramazanov.chat.json.DomainEntitiesJsonSupport._
   import jsonSupport._
@@ -78,9 +78,9 @@ trait ITestHarness extends FunSuiteLike with ScalaCheckDrivenPropertyChecks {
             MediaTypes.`application/json`,
             Json
               .obj(
-                "id" -> Json.fromString(id),
+                "id"       -> Json.fromString(id),
                 "password" -> Json.fromString(password),
-                "email" -> Json.fromString(email)
+                "email"    -> Json.fromString(email)
               )
               .noSpaces
           )
@@ -103,7 +103,7 @@ trait ITestHarness extends FunSuiteLike with ScalaCheckDrivenPropertyChecks {
       )(Keep.left)
     )
 
-    val rawMessages = f.map(
+    val rawMessages       = f.map(
       _.map(_.text).filterNot(m =>
         m === KeepAliveMessage.Ping.toString || m === KeepAliveMessage.Pong.toString
       )

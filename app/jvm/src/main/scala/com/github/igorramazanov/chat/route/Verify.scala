@@ -30,9 +30,9 @@ object Verify extends AbstractRoute {
 
         val verificationEndProcess =
           EmailApi[F].checkRequestIsExpired(emailVerificationId).flatMap {
-            case Right(request) =>
+            case Right(request)                  =>
               UserApi[F].save(request.asUser).map {
-                case Right(_) =>
+                case Right(_)                =>
                   EmailApi[F]
                     .deleteRequest(emailVerificationId)
                     .unsafeToFuture
@@ -58,7 +58,7 @@ object Verify extends AbstractRoute {
 
         onComplete(verificationEndProcess.unsafeToFuture) {
           case Success(responseRoute) => responseRoute
-          case Failure(exception) =>
+          case Failure(exception)     =>
             logger.error(
               s"Some error ocurred during email verification end process: '$rawVerificationId', reason: ${exception.getMessage}",
               exception

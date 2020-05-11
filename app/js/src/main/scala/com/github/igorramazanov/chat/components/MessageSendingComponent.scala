@@ -49,7 +49,7 @@ object MessageSendingComponent {
 
     def render(p: Props, s: State): VdomElement = {
       val invalidClass = if (s.isInvalid) " is-invalid" else ""
-      val input =
+      val input        =
         if (p.isActive)
           <.input(
             ^.`type` := "text",

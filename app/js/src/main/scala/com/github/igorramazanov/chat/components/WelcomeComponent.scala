@@ -50,7 +50,7 @@ object WelcomeComponent {
     private def validateId: CallbackTo[Unit] =
       $.modState { s =>
         User.Id.validate(s.id) match {
-          case Validated.Valid(_) => s.copy(idValidationErrors = Nil)
+          case Validated.Valid(_)        => s.copy(idValidationErrors = Nil)
           case Validated.Invalid(errors) =>
             s.copy(
               idValidationErrors =
@@ -62,7 +62,7 @@ object WelcomeComponent {
     private def validatePassword: CallbackTo[Unit] =
       $.modState { s =>
         User.Password.validate(s.password) match {
-          case Validated.Valid(_) =>
+          case Validated.Valid(_)        =>
             s.copy(passwordValidationErrors = Nil)
           case Validated.Invalid(errors) =>
             s.copy(
@@ -75,7 +75,7 @@ object WelcomeComponent {
     private def validateEmail: CallbackTo[Unit] =
       $.modState { s =>
         User.Email.validate(s.email) match {
-          case Validated.Valid(_) =>
+          case Validated.Valid(_)        =>
             s.copy(emailValidationErrors = Nil)
           case Validated.Invalid(errors) =>
             s.copy(
@@ -89,28 +89,26 @@ object WelcomeComponent {
       for {
         p <- $.props
         s <- $.state
-        _ <-
-          if (s.isValid)
-            p.signIn(
-              User.Id.unsafeCreate(s.id),
-              User.Email.unsafeCreate(s.email),
-              User.Password.unsafeCreate(s.password)
-            )
-          else Callback.empty
+        _ <- if (s.isValid)
+               p.signIn(
+                 User.Id.unsafeCreate(s.id),
+                 User.Email.unsafeCreate(s.email),
+                 User.Password.unsafeCreate(s.password)
+               )
+             else Callback.empty
       } yield ()
 
     private def signUp: CallbackTo[Unit] =
       for {
         p <- $.props
         s <- $.state
-        _ <-
-          if (s.isValid)
-            p.signUp(
-              User.Id.unsafeCreate(s.id),
-              User.Email.unsafeCreate(s.email),
-              User.Password.unsafeCreate(s.password)
-            )
-          else Callback.empty
+        _ <- if (s.isValid)
+               p.signUp(
+                 User.Id.unsafeCreate(s.id),
+                 User.Email.unsafeCreate(s.email),
+                 User.Password.unsafeCreate(s.password)
+               )
+             else Callback.empty
       } yield ()
 
     private def inputClass(isFirstTime: Boolean, isValid: Boolean) =
@@ -136,11 +134,11 @@ object WelcomeComponent {
             .mkTagMod(<.br) :: Nil
         else (^.className := "invalid-feedback") :: Nil
 
-      val idValidationErrors =
+      val idValidationErrors       =
         <.div(validationErrorsTagMods(s.idValidationErrors): _*)
       val passwordValidationErrors =
         <.div(validationErrorsTagMods(s.passwordValidationErrors): _*)
-      val emailValidationErrors =
+      val emailValidationErrors    =
         <.div(validationErrorsTagMods(s.emailValidationErrors): _*)
 
       <.div(

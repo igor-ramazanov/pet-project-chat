@@ -26,7 +26,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 object SignIn extends AbstractRoute {
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger           = LoggerFactory.getLogger(getClass)
   private val keepAliveTimeout = 5.seconds
 
   def createRoute[F[
@@ -71,19 +71,19 @@ object SignIn extends AbstractRoute {
                     onComplete(createWebSocketFlow(user).unsafeToFuture) {
                       case Success(flow) =>
                         handleWebSocketMessages(flow)
-                      case Failure(ex) =>
+                      case Failure(ex)   =>
                         logger.error(
                           s"Couldn't create WebSocket flow for request '${validRequest.toString}'",
                           ex
                         )
                         complete(ResponseCode.ServerError)
                     }
-                  case Success(None) =>
+                  case Success(None)       =>
                     logger.debug(
                       s"Sign in request forbidden, request: '${validRequest.toString}'"
                     )
                     complete(ResponseCode.InvalidCredentials)
-                  case Failure(ex) =>
+                  case Failure(ex)         =>
                     logger.error(
                       s"Couldn't check user credentials, request - ${validRequest.toString}, error message: ${ex.getMessage}",
                       ex
@@ -108,12 +108,10 @@ object SignIn extends AbstractRoute {
 
     val sourceEffect =
       for {
-        persistenceMessagesPublisher <-
-          PersistenceMessagesApi[F]
-            .ofUserOrdered(user.id)
-        realtimeIncomingMessagesPublisher <-
-          RealtimeIncomingMessagesApi[F]
-            .subscribe(user.id)
+        persistenceMessagesPublisher      <- PersistenceMessagesApi[F]
+                                          .ofUserOrdered(user.id)
+        realtimeIncomingMessagesPublisher <- RealtimeIncomingMessagesApi[F]
+                                               .subscribe(user.id)
       } yield Source
         .fromPublisher(persistenceMessagesPublisher)
         .concat(Source.fromPublisher(realtimeIncomingMessagesPublisher))
@@ -146,12 +144,12 @@ object SignIn extends AbstractRoute {
               .mkString_("", ", ", "")}"
           )
           Source.empty[GeneralChatMessage]
-        case Right(m) => Source.single(m)
+        case Right(m)     => Source.single(m)
       }
 
     for {
-      source <- sourceEffect
-      persistenceSubscriber <- PersistenceMessagesApi[F].save()
+      source                     <- sourceEffect
+      persistenceSubscriber      <- PersistenceMessagesApi[F].save()
       realtimeOutgoingSubscriber <- RealtimeOutgoingMessagesApi[F].send()
     } yield Flow.fromSinkAndSource(
       parsingFlow

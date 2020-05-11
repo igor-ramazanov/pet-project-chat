@@ -22,7 +22,7 @@ object StaticFiles {
   private val page = {
     import scalatags.Text.all._
     val (jsDependencies, frontend) =
-      if (BuildInfo.mode equalsIgnoreCase "prod")
+      if (BuildInfo.mode.equalsIgnoreCase("prod"))
         (
           script(
             src := "/pet-project-chat-frontend-jsdeps.min.js",

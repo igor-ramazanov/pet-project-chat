@@ -14,13 +14,13 @@ import scalacss.ScalaCssReact._
 object MessagesComponent {
   object Styles extends StyleSheet.Inline {
     import dsl._
-    val messageMe = style(
+    val messageMe     = style(
       alignSelf.flexEnd
     )
     val messageFriend = style(
       alignSelf.flexStart
     )
-    val message = style(
+    val message       = style(
       marginBottom(5.px),
       borderRadius(10.px).important,
       width(60.%%)
@@ -52,8 +52,8 @@ object MessagesComponent {
 
     def render(p: Props): VdomElement = {
       def message(user: User)(m: GeneralChatMessage) = {
-        val p = m.payload
-        val t = (m.dateTimeUtcEpochSeconds * 1000L).toDouble
+        val p    = m.payload
+        val t    = (m.dateTimeUtcEpochSeconds * 1000L).toDouble
         val date = new Date(t)
 
         def padd(n: Int): String = ("0" + n.toString).takeRight(2)
@@ -66,7 +66,7 @@ object MessagesComponent {
           date.getFullYear().toString
 
         def isOlderThan1Day(utcEpochSeconds: Long): Boolean = {
-          val curr = Date.now()
+          val curr   = Date.now()
           val dayAgo = (curr - 1.day.toMillis) / 1000
           utcEpochSeconds < dayAgo
         }

@@ -24,7 +24,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object SignUp extends AbstractRoute {
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger               = LoggerFactory.getLogger(getClass)
   private val messageStrictTimeout = 1.minute
 
   def createRoute[F[_]: UserApi: ToFuture: Monad: EmailApi](
@@ -50,7 +50,7 @@ object SignUp extends AbstractRoute {
             .toStrict(messageStrictTimeout)
             .flatMap { entity =>
               entity.data.utf8String.toSignUpRequest match {
-                case Left(errors) =>
+                case Left(errors)         =>
                   val errorsAsString = errors.show
 
                   Future.failed(
@@ -69,7 +69,7 @@ object SignUp extends AbstractRoute {
         post {
           entity(as[SignUpOrInRequest]) { request =>
             request.validate match {
-              case Left(invalidRequest) =>
+              case Left(invalidRequest)      =>
                 complete(
                   HttpResponse(
                     status = StatusCode.int2StatusCode(
@@ -87,15 +87,15 @@ object SignUp extends AbstractRoute {
                 )
 
                 val signUpEffect =
-                  emailVerificationConfig.map { _ =>
-                    startEmailVerification(validSignUpRequest)
-                  } getOrElse {
-                    signUpWithoutEmailVerification(validSignUpRequest)
-                  }
+                  emailVerificationConfig
+                    .map(_ => startEmailVerification(validSignUpRequest))
+                    .getOrElse {
+                      signUpWithoutEmailVerification(validSignUpRequest)
+                    }
 
                 onComplete(signUpEffect.unsafeToFuture) {
                   case Success(responseRoute) => responseRoute
-                  case Failure(exception) =>
+                  case Failure(exception)     =>
                     logger.error(
                       s"Some error occurred during email verification start process: '${request.email}', reason: ${exception.getMessage}",
                       exception
@@ -115,7 +115,7 @@ object SignUp extends AbstractRoute {
       validSignUpRequest: ValidSignUpOrInRequest
   ) =
     UserApi[F].save(validSignUpRequest.asUser).map {
-      case Right(_) =>
+      case Right(_)                =>
         logger.debug(
           s"Successfully registered new user ${validSignUpRequest.asUser}"
         )
@@ -143,7 +143,7 @@ object SignUp extends AbstractRoute {
               .sendVerificationEmail(request.email, _)
           )
           .map {
-            case Right(_) =>
+            case Right(_)        =>
               logger.debug(
                 s"Successfully sent verification email, email: '${request.email}'"
               )

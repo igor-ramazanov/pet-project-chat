@@ -26,7 +26,7 @@ class EmailApiToKvStoreApiInterpreter[F[_]: Async: Timer](
     jsonSupport: DomainEntitiesJsonSupport,
     executionContext: ExecutionContext
 ) extends EmailApi[F] {
-  private val logger: Logger = LoggerFactory.getLogger(getClass)
+  private val logger: Logger    = LoggerFactory.getLogger(getClass)
   import DomainEntitiesJsonSupport._
   import jsonSupport._
 
@@ -50,7 +50,7 @@ class EmailApiToKvStoreApiInterpreter[F[_]: Async: Timer](
         }
         Session.getDefaultInstance(props, auth)
       }
-    } getOrElse {
+    }.getOrElse {
       Session.getDefaultInstance(props)
     }
   }
@@ -59,7 +59,7 @@ class EmailApiToKvStoreApiInterpreter[F[_]: Async: Timer](
       signUpRequest: ValidSignUpOrInRequest
   ): F[Email.VerificationId] = {
     val rawId = java.util.UUID.randomUUID().toString
-    val id = Email.VerificationId(rawId)
+    val id    = Email.VerificationId(rawId)
     kvStoreApi
       .setWithExpiration(rawId, signUpRequest.toJson, c.timeout)
       .map { _ =>
@@ -100,7 +100,7 @@ class EmailApiToKvStoreApiInterpreter[F[_]: Async: Timer](
   }
   override def deleteRequest(
       emailVerificationId: Email.VerificationId
-  ): F[Unit] =
+  ): F[Unit]                    =
     kvStoreApi
       .del(emailVerificationId.value)
       .map(_ =>

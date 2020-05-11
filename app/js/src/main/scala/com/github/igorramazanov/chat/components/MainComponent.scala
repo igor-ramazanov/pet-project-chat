@@ -28,7 +28,7 @@ object MainComponent {
   sealed trait Page extends Product with Serializable
   object Page {
     final case object Welcoming extends Page
-    final case object Chat extends Page
+    final case object Chat      extends Page
   }
 
   final case class Alert(content: String, `type`: Alert.Type) {
@@ -62,17 +62,17 @@ object MainComponent {
       alerts: List[Alert]
   ) {
     def appendMessage(id: User.Id, message: GeneralChatMessage): State = {
-      val interlocutor =
+      val interlocutor     =
         if (id == message.from) message.to else message.from
       val previousMessages = messages.getOrElse(interlocutor, Nil)
-      val withNewMessage = previousMessages ::: (message :: Nil)
+      val withNewMessage   = previousMessages ::: (message :: Nil)
       copy(messages = messages.updated(interlocutor, withNewMessage))
     }
 
     def addNewContact(username: User.Id): State =
       copy(messages = messages + (username -> Nil))
 
-    def addAlert(alert: Alert): State = copy(alerts = alert :: alerts)
+    def addAlert(alert: Alert): State           = copy(alerts = alert :: alerts)
 
     def removeAlert(alertId: String): State =
       copy(alerts = alerts.filterNot(_.id == alertId))
@@ -110,10 +110,10 @@ object MainComponent {
 
       def connect =
         CallbackTo {
-          val host =
+          val host   =
             org.scalajs.dom.window.location.hostname
-          val port = org.scalajs.dom.window.location.port
-          val url =
+          val port   = org.scalajs.dom.window.location.port
+          val url    =
             s"ws://$host:$port/signin?id=${id.value}&email=${email.value}&password=${password.value}"
           val direct = $.withEffectsImpure
 
@@ -134,7 +134,7 @@ object MainComponent {
               val messageEither = rawMessage.toGeneralMessage
 
               messageEither match {
-                case Left(error) =>
+                case Left(error)    =>
                   direct.modState(
                     _.addAlert(
                       Alert(
@@ -186,7 +186,7 @@ object MainComponent {
           .onComplete { xhr =>
             $.modState(_.copy(isInFlight = false)) >> {
               xhr.status match {
-                case ResponseCode.Ok.value =>
+                case ResponseCode.Ok.value                                =>
                   signIn(id, email, password)
                 case ResponseCode.SuccessfullySentVerificationEmail.value =>
                   $.modState(
@@ -197,7 +197,7 @@ object MainComponent {
                       )
                     )
                   )
-                case ResponseCode.UserAlreadyExists.value =>
+                case ResponseCode.UserAlreadyExists.value                 =>
                   $.modState(
                     _.addAlert(
                       Alert(
@@ -206,7 +206,7 @@ object MainComponent {
                       )
                     )
                   )
-                case ResponseCode.ServerError.value =>
+                case ResponseCode.ServerError.value                       =>
                   $.modState(
                     _.addAlert(
                       Alert(
@@ -215,7 +215,7 @@ object MainComponent {
                       )
                     )
                   )
-                case other =>
+                case other                                                =>
                   $.modState(
                     _.addAlert(
                       Alert(
@@ -235,7 +235,7 @@ object MainComponent {
         s"/exists?id=${contact.value}"
       ).setRequestContentTypeJsonUtf8.send.onComplete { xhr =>
         xhr.status match {
-          case ResponseCode.Ok.value => $.modState(_.addNewContact(contact))
+          case ResponseCode.Ok.value                => $.modState(_.addNewContact(contact))
           case ResponseCode.UserDoesNotExists.value =>
             $.modState(
               _.addAlert(
@@ -245,7 +245,7 @@ object MainComponent {
                 )
               )
             )
-          case ResponseCode.ServerError.value =>
+          case ResponseCode.ServerError.value       =>
             $.modState(
               _.addAlert(
                 Alert(
@@ -254,7 +254,7 @@ object MainComponent {
                 )
               )
             )
-          case otherwise =>
+          case otherwise                            =>
             $.modState(
               _.addAlert(
                 Alert(
@@ -269,8 +269,8 @@ object MainComponent {
     private def send(to: User.Id, message: String): Callback =
       $.state.map { s =>
         for {
-          _ <- s.user
-          ws <- s.ws
+          _   <- s.user
+          ws  <- s.ws
           json = IncomingChatMessage(to, message).toJson
         } yield ws.send(json)
       }.void
@@ -282,7 +282,7 @@ object MainComponent {
             WelcomeComponent.Component(
               WelcomeComponent.Props(signIn, signUp, s.isInFlight)
             )
-          case Page.Chat =>
+          case Page.Chat      =>
             ChatComponent.Component(
               ChatComponent.Props(s.user, s.messages, addNewContact, send)
             )

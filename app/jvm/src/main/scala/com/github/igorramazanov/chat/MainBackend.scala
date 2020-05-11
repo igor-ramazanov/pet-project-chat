@@ -30,14 +30,14 @@ import scala.concurrent.{Await, Future}
 
 object MainBackend extends TaskApp {
 
-  private lazy val logger = LoggerFactory.getLogger(this.getClass)
+  private lazy val logger     = LoggerFactory.getLogger(this.getClass)
   private val shutdownTimeout = 10.seconds
 
   override def run(args: List[String]): Task[ExitCode] = {
-    implicit val actorSystem: ActorSystem = ActorSystem()
+    implicit val actorSystem: ActorSystem             = ActorSystem()
     implicit val actorMaterializer: ActorMaterializer = ActorMaterializer()
-    implicit val scheduler: Scheduler = Scheduler(actorSystem.dispatcher)
-    implicit val e: ToFuture[Task] = new ToFuture[Task] {
+    implicit val scheduler: Scheduler                 = Scheduler(actorSystem.dispatcher)
+    implicit val e: ToFuture[Task]                    = new ToFuture[Task] {
       override def unsafeToFuture[A](f: Task[A]): Future[A] = f.runToFuture
     }
 
@@ -72,29 +72,31 @@ object MainBackend extends TaskApp {
     import interpreters._
 
     implicit val emailApi: EmailApi[F] =
-      config.emailVerificationConfig.map { c =>
-        new EmailApiToKvStoreApiInterpreter[F](c)
-      } getOrElse {
-        new EmailApi[F]() {
-          override def saveRequestWithExpiration(
-              signUpRequest: ValidSignUpOrInRequest
-          ): F[Email.VerificationId] =
-            ???
+      config.emailVerificationConfig
+        .map(c => new EmailApiToKvStoreApiInterpreter[F](c))
+        .getOrElse {
+          new EmailApi[F]() {
+            override def saveRequestWithExpiration(
+                signUpRequest: ValidSignUpOrInRequest
+            ): F[Email.VerificationId] =
+              ???
 
-          override def checkRequestIsExpired(
-              emailVerificationId: Email.VerificationId
-          ): F[Either[EmailWasNotVerifiedInTime.type, ValidSignUpOrInRequest]] =
-            ???
-          override def deleteRequest(
-              emailVerificationId: Email.VerificationId
-          ): F[Unit] =
-            ???
-          override def sendVerificationEmail(
-              to: Email,
-              emailVerificationId: Email.VerificationId
-          ): F[Either[Throwable, Unit]] = ???
+            override def checkRequestIsExpired(
+                emailVerificationId: Email.VerificationId
+            ): F[
+              Either[EmailWasNotVerifiedInTime.type, ValidSignUpOrInRequest]
+            ]                             =
+              ???
+            override def deleteRequest(
+                emailVerificationId: Email.VerificationId
+            ): F[Unit]                    =
+              ???
+            override def sendVerificationEmail(
+                to: Email,
+                emailVerificationId: Email.VerificationId
+            ): F[Either[Throwable, Unit]] = ???
+          }
         }
-      }
 
     for {
       _ <- printJvmInfo[F]
@@ -108,7 +110,7 @@ object MainBackend extends TaskApp {
     Sync[F].delay {
       val processorsMessage =
         s"Available processors: ${Runtime.getRuntime.availableProcessors()}."
-      val maxMemoryMessage =
+      val maxMemoryMessage  =
         s"Max memory: ${Runtime.getRuntime.maxMemory() / 1024 / 1024} MB"
       logger.info(processorsMessage + " " + maxMemoryMessage)
     }

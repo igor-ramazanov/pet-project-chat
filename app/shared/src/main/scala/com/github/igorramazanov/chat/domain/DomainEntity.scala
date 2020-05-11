@@ -263,12 +263,12 @@ object User {
     new User(Id(id), Password(password), Email(email))
 
   object Implicits {
-    implicit val idEq: Eq[Id] = (x: Id, y: Id) => x.value === y.value
+    implicit val idEq: Eq[Id]             = (x: Id, y: Id) => x.value === y.value
     implicit val passwordEq: Eq[Password] = (x: Password, y: Password) =>
       x.value === y.value
-    implicit val emailEq: Eq[Email] = (x: Email, y: Email) =>
+    implicit val emailEq: Eq[Email]       = (x: Email, y: Email) =>
       x.value === y.value
-    implicit val userEq: Eq[User] = (x: User, y: User) =>
+    implicit val userEq: Eq[User]         = (x: User, y: User) =>
       x.id === y.id && x.password === y.password && x.email === y.email
   }
 }

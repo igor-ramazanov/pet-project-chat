@@ -32,9 +32,7 @@ object UserApiToKvStoreApiInterpreter {
         for {
           rawJson <- kvStoreApi.get(id.value)
         } yield rawJson
-          .flatMap { jsonString =>
-            jsonString.toUser.toOption
-          }
+          .flatMap(jsonString => jsonString.toUser.toOption)
           .filter { u =>
             u.password === password &&
             u.email === email

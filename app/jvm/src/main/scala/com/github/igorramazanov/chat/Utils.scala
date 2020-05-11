@@ -22,7 +22,7 @@ object Utils {
     fa.handleErrorWith {
       case _ if retries > 0 =>
         T.sleep(1.second).flatMap(_ => retryMonadError(fa)(retries - 1))
-      case e => M.raiseError(e)
+      case e                => M.raiseError(e)
     }
 
   implicit class MonadErrorAndTimerOps[F[_], A](val `this`: F[A])

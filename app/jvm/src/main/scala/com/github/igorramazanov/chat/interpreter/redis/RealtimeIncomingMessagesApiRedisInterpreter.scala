@@ -20,13 +20,13 @@ class RealtimeIncomingMessagesApiRedisInterpreter[F[_]] private (
     A: Applicative[F]
 ) extends RealtimeIncomingMessagesApi[F] {
   private val bufferSize = 100
-  private val logger = LoggerFactory.getLogger(this.getClass)
+  private val logger     = LoggerFactory.getLogger(this.getClass)
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   override def subscribe(id: User.Id): F[Publisher[GeneralChatMessage]] = {
     import DomainEntitiesJsonSupport._
     import jsonSupport._
-    val (queue, source) = Source
+    val (queue, source)            = Source
       .queue[GeneralChatMessage](bufferSize, OverflowStrategy.backpressure)
       .preMaterialize()
     val subscription: Subscription = {
@@ -34,7 +34,7 @@ class RealtimeIncomingMessagesApiRedisInterpreter[F[_]] private (
         val json = message
           .readAs[String]
         json.toGeneralMessage match {
-          case Left(error) =>
+          case Left(error)               =>
             logger.error(
               s"Couldn't parse json to GeneralChatMessage, json: $json, reason: $error"
             )
@@ -44,7 +44,7 @@ class RealtimeIncomingMessagesApiRedisInterpreter[F[_]] private (
             queue.offer(generalChatMessage).discard()
         }
 
-      case _ => ()
+      case _                              => ()
     }
     subscriberClient().subscribe(id.value).discard()
     A.pure(source.runWith(Sink.asPublisher(false)))
